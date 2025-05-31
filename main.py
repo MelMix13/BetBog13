@@ -328,9 +328,16 @@ class BetBogSystem:
                 for signal in signals:
                     # Get team statistics for totals strategies before processing
                     if signal.strategy_name in ['under_2_5_goals', 'over_2_5_goals']:
+                        home_team_id = parsed_match.get('home_team_id')
+                        away_team_id = parsed_match.get('away_team_id')
                         home_team = parsed_match.get('home_team', '')
                         away_team = parsed_match.get('away_team', '')
-                        team_stats = await self._get_teams_totals_stats(home_team, away_team)
+                        
+                        # Используем ID команд если они доступны, иначе названия
+                        if home_team_id and away_team_id:
+                            team_stats = await self._get_teams_totals_stats_by_id(home_team_id, away_team_id, home_team, away_team)
+                        else:
+                            team_stats = await self._get_teams_totals_stats(home_team, away_team)
                         signal.team_stats = team_stats  # Store in signal object
                     
                     await self.process_signal(session, signal, match_obj, current_metrics)
@@ -785,6 +792,41 @@ class BetBogSystem:
                         
         except Exception as e:
             self.logger.error(f"Ошибка Telegram API: {str(e)}")
+
+    async def _get_teams_totals_stats_by_id(self, home_team_id: str, away_team_id: str, home_team: str, away_team: str) -> Dict[str, Any]:
+        """Получить статистику тоталов для команд по ID из исторических данных"""
+        try:
+            self.logger.info(f"Запрос статистики команд по ID: {home_team} (ID: {home_team_id}) vs {away_team} (ID: {away_team_id})")
+            
+            # Получаем исторические данные для команд через API по ID
+            home_matches = await self.api_client.get_team_matches_by_id(home_team_id, days_back=30)
+            away_matches = await self.api_client.get_team_matches_by_id(away_team_id, days_back=30)
+            
+            self.logger.info(f"Найдено матчей по ID: {home_team} = {len(home_matches) if home_matches else 0}, {away_team} = {len(away_matches) if away_matches else 0}")
+            
+            if not home_matches and not away_matches:
+                self.logger.warning(f"Нет исторических данных через API по ID для команд {home_team} vs {away_team}")
+                return None
+            
+            # Анализируем домашнюю команду
+            home_stats = self._analyze_team_api_data(home_matches, home_team, True)
+            
+            # Анализируем гостевую команду
+            away_stats = self._analyze_team_api_data(away_matches, away_team, False)
+            
+            # Комбинированный тренд
+            combined_trend = self._get_combined_trend(home_stats, away_stats)
+            
+            return {
+                'home_team': home_stats,
+                'away_team': away_stats,
+                'combined_trend': combined_trend,
+                'data_source': 'API_by_ID'
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка получения статистики команд по ID: {str(e)}")
+            return None
 
     async def _get_teams_totals_stats(self, home_team: str, away_team: str) -> Dict[str, Any]:
         """Получить статистику тоталов для команд из исторических данных"""

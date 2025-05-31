@@ -231,6 +231,26 @@ class APIClient:
         
         return all_matches
     
+    async def get_team_matches_by_id(self, team_id: str, days_back: int = 30) -> List[Dict[str, Any]]:
+        """Get specific team's matches by team ID from recent period"""
+        try:
+            # Получаем завершенные матчи для конкретной команды по ID
+            matches = await self.get_finished_matches(days_back=days_back, team_id=team_id)
+            
+            # Парсим данные матчей
+            team_matches = []
+            for match in matches:
+                parsed = self.parse_match_data(match)
+                if parsed:  # Добавляем только успешно распарсенные матчи
+                    team_matches.append(parsed)
+            
+            self.logger.info(f"Found {len(team_matches)} matches for team ID '{team_id}' in last {days_back} days")
+            return team_matches
+            
+        except Exception as e:
+            self.logger.error(f"Error getting matches for team ID {team_id}: {str(e)}")
+            return []
+
     async def get_team_matches(self, team_name: str, days_back: int = 30) -> List[Dict[str, Any]]:
         """Get specific team's matches from recent period"""
         all_matches = await self.get_finished_matches(days_back)
@@ -259,6 +279,8 @@ class APIClient:
                 "id": match_data.get("id"),
                 "home_team": match_data.get("home", {}).get("name", "Unknown") if isinstance(match_data.get("home"), dict) else "Unknown",
                 "away_team": match_data.get("away", {}).get("name", "Unknown") if isinstance(match_data.get("away"), dict) else "Unknown",
+                "home_team_id": match_data.get("home", {}).get("id") if isinstance(match_data.get("home"), dict) else None,
+                "away_team_id": match_data.get("away", {}).get("id") if isinstance(match_data.get("away"), dict) else None,
                 "league": match_data.get("league", {}).get("name", "Unknown") if isinstance(match_data.get("league"), dict) else "Unknown",
                 "start_time": self._parse_timestamp(match_data.get("time")),
                 "minute": match_data.get("timer", {}).get("tm", 0) if isinstance(match_data.get("timer"), dict) else 0,
