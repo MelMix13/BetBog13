@@ -29,7 +29,7 @@ class BetBogSystem:
         # Core components
         self.api_client: Optional[APIClient] = None
         self.metrics_calculator = MetricsCalculator()
-        self.strategies = BettingStrategies(self.config.DEFAULT_THRESHOLDS)
+        self.strategies = BettingStrategies(self.config.get_default_thresholds())
         self.ml_optimizer = SimpleOptimizer()
         self.telegram_bot = TelegramBot(self.config)
         self.match_monitor = MatchMonitor(self.config)
@@ -122,7 +122,7 @@ class BetBogSystem:
         for strategy_name in default_strategies:
             config = StrategyConfig(
                 strategy_name=strategy_name,
-                config=self.config.DEFAULT_THRESHOLDS.get(strategy_name, {}),
+                config=self.config.get_default_thresholds().get(strategy_name, {}),
                 total_signals=0,
                 winning_signals=0,
                 total_profit=0.0,
@@ -275,7 +275,7 @@ class BetBogSystem:
             final_confidence = ml_confidence
             
             # Check if signal meets minimum confidence threshold
-            strategy_config = self.config.DEFAULT_THRESHOLDS.get(signal.strategy_name, {})
+            strategy_config = self.config.get_default_thresholds().get(signal.strategy_name, {})
             min_confidence = strategy_config.get('min_confidence', 0.7)
             
             if final_confidence < min_confidence:

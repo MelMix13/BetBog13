@@ -17,23 +17,24 @@ class Config:
     HISTORY_ENDPOINT: str = "/events/ended"
     
     # Strategy Configuration
-    DEFAULT_THRESHOLDS: Dict[str, Dict[str, float]] = {
-        "dxg_spike": {
-            "threshold": 0.15,
-            "min_confidence": 0.7,
-            "lookback_minutes": 10
-        },
-        "momentum_shift": {
-            "threshold": 0.25,
-            "stability_factor": 0.8,
-            "min_shots": 3
-        },
-        "tiredness_advantage": {
-            "threshold": 0.3,
-            "gradient_factor": 0.2,
-            "wave_amplitude": 0.1
+    def get_default_thresholds(self) -> Dict[str, Dict[str, float]]:
+        return {
+            "dxg_spike": {
+                "threshold": 0.15,
+                "min_confidence": 0.7,
+                "lookback_minutes": 10
+            },
+            "momentum_shift": {
+                "threshold": 0.25,
+                "stability_factor": 0.8,
+                "min_shots": 3
+            },
+            "tiredness_advantage": {
+                "threshold": 0.3,
+                "gradient_factor": 0.2,
+                "wave_amplitude": 0.1
+            }
         }
-    }
     
     # ML Configuration
     ML_UPDATE_INTERVAL: int = 24  # hours
