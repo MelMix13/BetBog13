@@ -97,8 +97,12 @@ class APIClient:
     async def get_match_statistics(self, match_id: str) -> Dict[str, Any]:
         """Get match statistics"""
         params = {"event_id": match_id}
-        data = await self._make_request("/event/stats", params)
-        return data.get("results", {})
+        # Используем правильный endpoint согласно документации API
+        data = await self._make_request("/event/view", params)
+        results = data.get("results", [])
+        if results and isinstance(results, list) and len(results) > 0:
+            return results[0].get("stats", {})
+        return {}
     
     async def get_finished_matches(self, 
                                  days_back: int = 1, 
