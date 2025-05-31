@@ -18,7 +18,7 @@ args = "BetBog Bot"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Telegram Bot"
+args = "Menu Bot"
 
 [[workflows.workflow]]
 name = "BetBog Bot"
@@ -29,12 +29,12 @@ task = "shell.exec"
 args = "python main.py"
 
 [[workflows.workflow]]
-name = "Telegram Bot"
+name = "Menu Bot"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python simple_bot.py"
+args = "python telegram_menu_bot.py"
 
 [deployment]
 run = ["sh", "-c", "python main.py"]
