@@ -20,6 +20,7 @@ from match_monitor import MatchMonitor
 from result_tracker import ResultTracker
 from logger import BetBogLogger
 from tick_analyzer import TickAnalyzer
+from team_stats_cache import TeamStatsCache
 
 class BetBogSystem:
     """Main BetBog monitoring system"""
@@ -39,6 +40,7 @@ class BetBogSystem:
         self.match_monitor = MatchMonitor(self.config)
         self.result_tracker = ResultTracker(self.config)
         self.tick_analyzer = TickAnalyzer(self.config)
+        self.team_stats_cache = TeamStatsCache(self.config)
         
         # System state
         self.monitored_matches: Dict[str, Dict] = {}
@@ -79,6 +81,14 @@ class BetBogSystem:
                 None  # Telegram bot отключен
             )
             self.logger.success("Result tracker initialized")
+            
+            # Initialize team stats cache
+            await self.team_stats_cache.initialize(self.api_client)
+            self.logger.success("Team stats cache initialized")
+            
+            # Update teams statistics from current live matches
+            await self.team_stats_cache.update_teams_from_live_matches()
+            self.logger.success("Team statistics updated from live matches")
             
             # Load existing strategy configurations
             await self.load_strategy_configs()
