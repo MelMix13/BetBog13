@@ -1,0 +1,50 @@
+2025-05-31 11:23:54,917 - INFO - [API] Found 0 matches for team ID '321720' in last 30 days
+2025-05-31 11:23:54,917 - INFO - [API] Requesting ended matches for 2025-05-30
+2025-05-31 11:23:57,926 - INFO - [API] Found 0 finished matches with scores for 2025-05-30
+2025-05-31 11:23:57,926 - INFO - [API] Requesting ended matches for 2025-05-29
+2025-05-31 11:24:00,944 - INFO - [API] Found 0 finished matches with scores for 2025-05-29
+2025-05-31 11:24:00,944 - INFO - [API] Requesting ended matches for 2025-05-28
+2025-05-31 11:26:50,224 - INFO - [MAIN] Searching for new matches...
+2025-05-31 11:26:50,224 - INFO - [API] Requesting live matches with sport_id=1
+2025-05-31 11:26:50,479 - INFO - [API] Filtered 67 -> 58 real matches
+2025-05-31 11:26:50,492 - INFO - [MAIN] Found 58 active matches to monitor
+2025-05-31 11:26:51,837 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:26:53,318 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:26:54,623 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:26:55,937 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:26:57,245 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:02,624 - INFO - [MAIN] Searching for new matches...
+2025-05-31 11:27:02,624 - INFO - [API] Requesting live matches with sport_id=1
+2025-05-31 11:27:05,768 - INFO - [API] Filtered 67 -> 58 real matches
+2025-05-31 11:27:05,781 - INFO - [MAIN] Found 58 active matches to monitor
+2025-05-31 11:27:06,876 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:08,473 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:09,724 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:11,021 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:12,246 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:13,595 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:14,897 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:16,300 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:17,675 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:18,970 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:20,339 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:21,636 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:22,932 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:24,257 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:25,551 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:26,892 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:28,262 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:29,560 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:30,867 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:32,165 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:33,465 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:34,833 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:36,130 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:37,360 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:38,654 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:39,953 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:41,257 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%
+2025-05-31 11:27:42,723 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%
+2025-05-31 11:27:44,089 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%
+2025-05-31 11:27:45,390 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%
+2025-05-31 11:27:46,692 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%

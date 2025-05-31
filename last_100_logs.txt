@@ -1,0 +1,100 @@
+2025-05-31 11:27:18,680 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9419783
+2025-05-31 11:27:18,753 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:18,970 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:18,971 - INFO - [MAIN] Signal generated: under_2_5_goals for Kyoto Sanga FC vs FC Tokyo
+2025-05-31 11:27:20,049 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9416332
+2025-05-31 11:27:20,122 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 1.10
+2025-05-31 11:27:20,339 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:20,340 - INFO - [MAIN] Signal generated: under_2_5_goals for Lyn Oslo 2 vs Førde
+2025-05-31 11:27:21,346 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9409513
+2025-05-31 11:27:21,418 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:21,636 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:21,636 - INFO - [MAIN] Signal generated: under_2_5_goals for Chungbuk Cheongju vs Gyeongnam FC
+2025-05-31 11:27:22,642 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 10023355
+2025-05-31 11:27:22,715 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:22,932 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:22,932 - INFO - [MAIN] Signal generated: under_2_5_goals for Tampines Rovers FC vs Lion City Sailors FC
+2025-05-31 11:27:23,966 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9370407
+2025-05-31 11:27:24,039 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:24,257 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:24,257 - INFO - [MAIN] Signal generated: under_2_5_goals for FC Anyang vs Daejeon Hana Citizen
+2025-05-31 11:27:25,261 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9370359
+2025-05-31 11:27:25,334 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:25,551 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:25,552 - INFO - [MAIN] Signal generated: under_2_5_goals for FC Seoul vs Jeju United
+2025-05-31 11:27:26,602 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9369329
+2025-05-31 11:27:26,675 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:26,892 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:26,892 - INFO - [MAIN] Signal generated: under_2_5_goals for Jeonbuk Motors vs Ulsan Hyundai
+2025-05-31 11:27:27,899 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9067350
+2025-05-31 11:27:27,974 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:28,262 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:28,262 - INFO - [MAIN] Signal generated: under_2_5_goals for Pogon Szczecin U19 vs Slask Wroclaw U19
+2025-05-31 11:27:29,270 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9067232
+2025-05-31 11:27:29,343 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:29,560 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:29,561 - INFO - [MAIN] Signal generated: under_2_5_goals for Stal Rzeszow U19 vs Arka Gdynia U19
+2025-05-31 11:27:30,577 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9067229
+2025-05-31 11:27:30,650 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 1.10
+2025-05-31 11:27:30,867 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:30,867 - INFO - [MAIN] Signal generated: under_2_5_goals for Lechia Gdansk U19 vs Odra Opole U19
+2025-05-31 11:27:31,874 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9067228
+2025-05-31 11:27:31,947 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 1.10
+2025-05-31 11:27:32,165 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 110.0%
+2025-05-31 11:27:32,166 - INFO - [MAIN] Signal generated: under_2_5_goals for Warta Poznan U19 vs Gornik Zabrze U19
+2025-05-31 11:27:33,175 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 9067226
+2025-05-31 11:27:33,248 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:33,465 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:33,466 - INFO - [MAIN] Signal generated: under_2_5_goals for Cracovia Krakow U19 vs Jagiellonia Bialystok U19
+2025-05-31 11:27:34,543 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 10029879
+2025-05-31 11:27:34,616 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:34,833 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:34,834 - INFO - [MAIN] Signal generated: under_2_5_goals for LKS Lodz III vs Omega Kleszczow
+2025-05-31 11:27:35,839 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 10028880
+2025-05-31 11:27:35,912 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:36,130 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:36,130 - INFO - [MAIN] Signal generated: under_2_5_goals for AFC U21 vs Hollandia U21
+2025-05-31 11:27:37,141 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 10028877
+2025-05-31 11:27:37,215 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:37,360 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:37,360 - INFO - [MAIN] Signal generated: under_2_5_goals for Spartaan'20 U21 vs Alexandria '66 U21
+2025-05-31 11:27:38,365 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 8966242
+2025-05-31 11:27:38,438 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:38,654 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:38,655 - INFO - [MAIN] Signal generated: under_2_5_goals for Wisla Plock II vs MKS Swit Nowy Dwor Mazowiecki
+2025-05-31 11:27:39,662 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 10028879
+2025-05-31 11:27:39,735 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 0.90
+2025-05-31 11:27:39,953 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 90.0%
+2025-05-31 11:27:39,954 - INFO - [MAIN] Signal generated: under_2_5_goals for Alkmaarse FC 1934 U21 vs RKVV DEM U21
+2025-05-31 11:27:40,962 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 10031369
+2025-05-31 11:27:41,040 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 1.00
+2025-05-31 11:27:41,257 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%
+2025-05-31 11:27:41,258 - INFO - [MAIN] Signal generated: under_2_5_goals for Casuarina FC vs Garuda FC
+2025-05-31 11:27:42,269 - INFO - [MATCH_MONITOR] Created new match: Olimpia Grudziadz vs Wieczysta Krakow
+2025-05-31 11:27:42,342 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 8380937
+2025-05-31 11:27:42,506 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 1.00
+2025-05-31 11:27:42,723 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%
+2025-05-31 11:27:42,723 - INFO - [MAIN] Signal generated: under_2_5_goals for Olimpia Grudziadz vs Wieczysta Krakow
+2025-05-31 11:27:43,663 - INFO - [MATCH_MONITOR] Created new match: Puskas Academy U19 vs Diosgyori VTK U19
+2025-05-31 11:27:43,736 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 10029139
+2025-05-31 11:27:43,867 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 1.00
+2025-05-31 11:27:44,089 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%
+2025-05-31 11:27:44,089 - INFO - [MAIN] Signal generated: under_2_5_goals for Puskas Academy U19 vs Diosgyori VTK U19
+2025-05-31 11:27:45,022 - INFO - [MATCH_MONITOR] Created new match: Royal AM FC Women vs Ezemvelo Women
+2025-05-31 11:27:45,095 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 10029451
+2025-05-31 11:27:45,168 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 1.00
+2025-05-31 11:27:45,390 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%
+2025-05-31 11:27:45,391 - INFO - [MAIN] Signal generated: under_2_5_goals for Royal AM FC Women vs Ezemvelo Women
+2025-05-31 11:27:46,327 - INFO - [MATCH_MONITOR] Created new match: DKS Dobre Miasto vs Olimpia Olsztynek
+2025-05-31 11:27:46,400 - INFO - [TICK_ANALYZER] Инициализирован анализ тиков для матча 10029873
+2025-05-31 11:27:46,473 - INFO - [STRATEGIES] Signal generated: under_2_5_goals - 1.00
+2025-05-31 11:27:46,692 - INFO - [MAIN] SIGNAL: under_2_5_goals - under_2_5 - 100.0%
+2025-05-31 11:27:46,692 - INFO - [MAIN] Signal generated: under_2_5_goals for DKS Dobre Miasto vs Olimpia Olsztynek
+2025-05-31 11:27:47,418 - INFO - [MAIN] Shutting down BetBog System
+2025-05-31 11:27:47,418 - INFO - [MAIN] Telegram bot was disabled
+2025-05-31 11:27:47,419 - INFO - [MAIN] Database connections closed
+2025-05-31 11:27:47,419 - INFO - [MAIN] System shutdown complete
+2025-05-31 11:27:47,419 - INFO - [MAIN] Shutting down BetBog System
+2025-05-31 11:27:47,419 - INFO - [MAIN] Telegram bot was disabled
+2025-05-31 11:27:47,420 - INFO - [MAIN] Database connections closed
+2025-05-31 11:27:47,420 - INFO - [MAIN] System shutdown complete
