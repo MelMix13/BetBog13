@@ -68,27 +68,30 @@ class SimpleTelegramMenuBot:
 
     async def _check_system_status(self):
         """Проверка статуса системы"""
+        session = None
         try:
-            session = get_session()
-            async with session:
-                # Проверяем активные сигналы
-                active_signals = await session.scalar(
-                    select(func.count(Signal.id)).where(Signal.result == "pending")
+            session = AsyncSessionLocal()
+            # Проверяем активные сигналы
+            active_signals = await session.scalar(
+                select(func.count(Signal.id)).where(Signal.result == "pending")
+            )
+            
+            # Проверяем общее количество сигналов за сегодня
+            today = datetime.now().date()
+            today_signals = await session.scalar(
+                select(func.count(Signal.id)).where(
+                    func.date(Signal.created_at) == today
                 )
+            )
+            
+            if today_signals and today_signals > 0:
+                self.logger.info(f"📊 Система активна: {active_signals or 0} активных сигналов, {today_signals} за сегодня")
                 
-                # Проверяем общее количество сигналов за сегодня
-                today = datetime.now().date()
-                today_signals = await session.scalar(
-                    select(func.count(Signal.id)).where(
-                        func.date(Signal.created_at) == today
-                    )
-                )
-                
-                if today_signals and today_signals > 0:
-                    self.logger.info(f"📊 Система активна: {active_signals or 0} активных сигналов, {today_signals} за сегодня")
-                    
         except Exception as e:
             self.logger.error(f"Ошибка проверки статуса: {str(e)}")
+        finally:
+            if session:
+                await session.close()
 
     async def send_signal_notification(self, signal_data: Dict[str, Any], match_data: Dict[str, Any]):
         """Отправить уведомление о новом сигнале"""
