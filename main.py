@@ -12,7 +12,7 @@ from models import Match, Signal, StrategyConfig, MatchMetrics, SystemLog
 from api_client import APIClient
 from metrics_calculator import MetricsCalculator, MatchMetrics
 from strategies import BettingStrategies, SignalResult
-from ml_optimizer import MLOptimizer
+from simple_optimizer import SimpleOptimizer
 from bot import TelegramBot
 from match_monitor import MatchMonitor
 from result_tracker import ResultTracker
@@ -30,7 +30,7 @@ class BetBogSystem:
         self.api_client: Optional[APIClient] = None
         self.metrics_calculator = MetricsCalculator()
         self.strategies = BettingStrategies(self.config.DEFAULT_THRESHOLDS)
-        self.ml_optimizer = MLOptimizer()
+        self.ml_optimizer = SimpleOptimizer()
         self.telegram_bot = TelegramBot(self.config)
         self.match_monitor = MatchMonitor(self.config)
         self.result_tracker = ResultTracker(self.config)
@@ -75,12 +75,12 @@ class BetBogSystem:
             # Load existing strategy configurations
             await self.load_strategy_configs()
             
-            # Load ML models if available
+            # Load optimization data if available
             try:
-                self.ml_optimizer.load_models("models.json")
-                self.logger.success("ML models loaded")
+                self.ml_optimizer.load_models("optimization_data.json")
+                self.logger.success("Optimization data loaded")
             except:
-                self.logger.warning("No existing ML models found - will train new ones")
+                self.logger.warning("No existing optimization data found - will create new profiles")
             
             self.logger.success("System initialization complete")
             
@@ -253,12 +253,12 @@ class BetBogSystem:
                            metrics: MatchMetrics):
         """Process a generated signal"""
         try:
-            # Use ML to enhance confidence if model is available
+            # Use statistical optimizer to enhance confidence
             ml_confidence, ml_explanation = self.ml_optimizer.predict_signal_success(
                 signal.strategy_name,
                 signal.trigger_metrics,
                 signal.confidence,
-                signal.trigger_metrics.get('minute', 45),
+                int(signal.trigger_metrics.get('minute', 45)),
                 signal.threshold_used
             )
             

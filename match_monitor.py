@@ -9,7 +9,7 @@ from config import Config
 from models import Match, MatchMetrics as MatchMetricsModel, Signal
 from metrics_calculator import MatchMetrics, MetricsCalculator
 from strategies import BettingStrategies
-from ml_optimizer import MLOptimizer
+from simple_optimizer import SimpleOptimizer
 from api_client import APIClient
 from logger import BetBogLogger
 
@@ -25,13 +25,13 @@ class MatchMonitor:
         self.api_client: Optional[APIClient] = None
         self.metrics_calculator: Optional[MetricsCalculator] = None
         self.strategies: Optional[BettingStrategies] = None
-        self.ml_optimizer: Optional[MLOptimizer] = None
+        self.ml_optimizer: Optional[SimpleOptimizer] = None
     
     async def initialize(self, 
                         api_client: APIClient,
                         metrics_calculator: MetricsCalculator,
                         strategies: BettingStrategies,
-                        ml_optimizer: MLOptimizer):
+                        ml_optimizer: SimpleOptimizer):
         """Initialize with required components"""
         self.api_client = api_client
         self.metrics_calculator = metrics_calculator

@@ -1,58 +1,50 @@
-import numpy as np
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.preprocessing import StandardScaler
-from typing import Dict, List, Any, Tuple, Optional
-import pickle
 import json
+import statistics
 from datetime import datetime, timedelta
+from typing import Dict, List, Any, Tuple, Optional
 from logger import BetBogLogger
-import warnings
-warnings.filterwarnings('ignore')
 
 class MLOptimizer:
-    """Machine Learning optimizer for betting strategies"""
+    """Simple statistical optimizer for betting strategies without ML dependencies"""
     
     def __init__(self):
-        self.logger = BetBogLogger("ML_OPTIMIZER")
-        self.models: Dict[str, Any] = {}
-        self.scalers: Dict[str, StandardScaler] = {}
-        self.feature_importance: Dict[str, Dict[str, float]] = {}
+        self.logger = BetBogLogger("OPTIMIZER")
+        self.strategy_stats: Dict[str, Dict] = {}
+        self.threshold_history: Dict[str, List[Dict]] = {}
         self.performance_history: Dict[str, List[Dict]] = {}
         
     async def optimize_strategy_thresholds(self, 
                                          strategy_name: str,
                                          historical_signals: List[Dict[str, Any]],
-                                         min_samples: int = 50) -> Dict[str, float]:
-        """Optimize strategy thresholds using ML"""
+                                         min_samples: int = 30) -> Dict[str, float]:
+        """Optimize strategy thresholds using statistical analysis"""
         
         if len(historical_signals) < min_samples:
             self.logger.warning(f"Not enough samples for {strategy_name}: {len(historical_signals)}")
             return {}
         
         try:
-            # Prepare training data
-            X, y, feature_names = self._prepare_training_data(historical_signals)
+            # Analyze historical performance
+            win_signals = [s for s in historical_signals if s.get('result') == 'win']
+            loss_signals = [s for s in historical_signals if s.get('result') == 'loss']
             
-            if X.shape[0] == 0:
-                self.logger.error(f"No valid training data for {strategy_name}")
+            if not win_signals:
+                self.logger.warning(f"No winning signals found for {strategy_name}")
                 return {}
             
-            # Train and optimize model
-            best_model, best_params = await self._train_optimize_model(X, y, strategy_name)
-            
-            # Calculate optimal thresholds
-            optimal_thresholds = self._calculate_optimal_thresholds(
-                best_model, X, y, feature_names, strategy_name
+            # Calculate optimal thresholds based on winning patterns
+            optimal_thresholds = self._calculate_statistical_thresholds(
+                win_signals, loss_signals, strategy_name
             )
             
-            # Store model and results
-            self.models[strategy_name] = best_model
-            self.feature_importance[strategy_name] = dict(zip(
-                feature_names, best_model.feature_importances_
-            ))
+            # Store performance data
+            self.strategy_stats[strategy_name] = {
+                'win_rate': len(win_signals) / len(historical_signals),
+                'total_signals': len(historical_signals),
+                'avg_confidence_wins': statistics.mean([s.get('confidence', 0.5) for s in win_signals]),
+                'avg_confidence_losses': statistics.mean([s.get('confidence', 0.5) for s in loss_signals]) if loss_signals else 0,
+                'last_optimized': datetime.now().isoformat()
+            }
             
             self.logger.success(f"Optimized {strategy_name}: {optimal_thresholds}")
             return optimal_thresholds
