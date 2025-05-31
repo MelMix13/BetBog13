@@ -339,21 +339,24 @@ class BetBogSystem:
                 
                 # Process any generated signals
                 for signal in signals:
-                    # Get team statistics for totals strategies before processing
-                    if signal.strategy_name in ['under_2_5_goals', 'over_2_5_goals']:
-                        home_team_id = parsed_match.get('home_team_id')
-                        away_team_id = parsed_match.get('away_team_id')
-                        home_team = parsed_match.get('home_team', '')
-                        away_team = parsed_match.get('away_team', '')
-                        
-                        # Используем ID команд если они доступны, иначе названия
-                        if home_team_id and away_team_id:
-                            team_stats = await self._get_teams_totals_stats_by_id(home_team_id, away_team_id, home_team, away_team)
-                        else:
-                            team_stats = await self._get_teams_totals_stats(home_team, away_team)
-                        signal.team_stats = team_stats  # Store in signal object
-                    
+                    # Сначала сохраняем сигнал, затем получаем дополнительную статистику
                     await self.process_signal(session, signal, match_obj, current_metrics)
+                    
+                    # Получаем статистику команд для тоталов асинхронно (не блокируя сохранение)
+                    if signal.strategy_name in ['under_2_5_goals', 'over_2_5_goals']:
+                        try:
+                            home_team_id = parsed_match.get('home_team_id')
+                            away_team_id = parsed_match.get('away_team_id')
+                            home_team = parsed_match.get('home_team', '')
+                            away_team = parsed_match.get('away_team', '')
+                            
+                            if home_team_id and away_team_id:
+                                team_stats = await self._get_teams_totals_stats_by_id(home_team_id, away_team_id, home_team, away_team)
+                                signal.team_stats = team_stats
+                                self.logger.info(f"Получена статистика команд для сигнала {signal.strategy_name}")
+                        except Exception as e:
+                            self.logger.warning(f"Не удалось получить статистику команд: {str(e)}")
+                            signal.team_stats = {}
                 
                 # Очистка данных тиков для завершенных матчей (после 90+ минут)
                 if minute >= 90:
@@ -1001,30 +1004,9 @@ class BetBogSystem:
         if minute < 0 or minute > 130:
             return False
         
-        # Проверяем наличие хотя бы минимальной активности для матчей после 10 минуты
-        if minute > 10:
-            total_attacks = stats.get('attacks_home', 0) + stats.get('attacks_away', 0)
-            total_shots = stats.get('shots_home', 0) + stats.get('shots_away', 0)
-            
-            # Для живого матча после 10 минут должна быть хоть какая-то активность
-            if total_attacks == 0 and total_shots == 0:
-                self.logger.warning(f"Нулевая активность в матче {parsed_match.get('home_team')} vs {parsed_match.get('away_team')} на {minute} минуте")
-                return False
-        
-        # Проверяем, что данные не все нулевые (API ошибка)
-        key_stats = [
-            stats.get('attacks_home', 0),
-            stats.get('attacks_away', 0),
-            stats.get('shots_home', 0),
-            stats.get('shots_away', 0),
-            stats.get('corners_home', 0),
-            stats.get('corners_away', 0)
-        ]
-        
-        # Для матчей после 15 минут хотя бы один показатель должен быть > 0
-        if minute > 15 and all(stat == 0 for stat in key_stats):
-            self.logger.warning(f"Все ключевые статистики нулевые для матча на {minute} минуте")
-            return False
+        # Смягченная валидация - принимаем живые матчи даже с нулевой статистикой
+        # API может не предоставлять детальную статистику в реальном времени
+        self.logger.debug(f"Принят к анализу матч {parsed_match.get('home_team')} vs {parsed_match.get('away_team')} на {minute} минуте")
         
         return True
 
