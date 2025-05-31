@@ -17,6 +17,7 @@ class TelegramMenuBot:
         self.bot_token = os.getenv("BOT_TOKEN", "7228733029:AAFVPzKHUSRidigzYSy_IANt8rWzjjPBDPA")
         self.database_url = os.getenv("DATABASE_URL")
         self.running = False
+        self.user_messages = {}  # Хранение message_id для каждого пользователя
         
     async def get_db_connection(self):
         """Получение подключения к базе данных"""
@@ -42,14 +43,43 @@ class TelegramMenuBot:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=data) as response:
                     if response.status == 200:
+                        result = await response.json()
+                        message_id = result.get("result", {}).get("message_id")
                         print(f"✅ Сообщение отправлено пользователю {chat_id}")
-                        return True
+                        return message_id
                     else:
                         print(f"❌ Ошибка отправки: {response.status}")
-                        return False
+                        return None
                         
         except Exception as e:
             print(f"Ошибка отправки сообщения: {str(e)}")
+            return None
+
+    async def edit_message(self, chat_id: int, message_id: int, text: str, reply_markup=None):
+        """Редактирование существующего сообщения"""
+        try:
+            url = f"https://api.telegram.org/bot{self.bot_token}/editMessageText"
+            data = {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "text": text, 
+                "parse_mode": "HTML"
+            }
+            
+            if reply_markup:
+                data["reply_markup"] = json.dumps(reply_markup)
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=data) as response:
+                    if response.status == 200:
+                        print(f"✅ Сообщение отредактировано для пользователя {chat_id}")
+                        return True
+                    else:
+                        print(f"❌ Ошибка редактирования: {response.status}")
+                        return False
+                        
+        except Exception as e:
+            print(f"Ошибка редактирования сообщения: {str(e)}")
             return False
 
     async def answer_callback_query(self, callback_query_id: str, text: str = ""):
@@ -143,7 +173,7 @@ class TelegramMenuBot:
         
         try:
             query = """
-                SELECT strategy_name, thresholds, enabled, total_signals, win_rate
+                SELECT strategy_name, enabled, total_signals, win_rate
                 FROM strategy_configs 
                 ORDER BY strategy_name
             """
@@ -215,7 +245,13 @@ class TelegramMenuBot:
 
 🔄 Обновление каждые 60 секунд"""
 
-        await self.send_message(chat_id, message, self.create_main_menu())
+        # Редактируем существующее сообщение если есть message_id
+        if chat_id in self.user_messages:
+            await self.edit_message(chat_id, self.user_messages[chat_id], message, self.create_main_menu())
+        else:
+            message_id = await self.send_message(chat_id, message, self.create_main_menu())
+            if message_id:
+                self.user_messages[chat_id] = message_id
 
     async def handle_signals(self, chat_id: int, callback_query_id: str):
         """Обработка кнопки Сигналы"""
@@ -241,7 +277,13 @@ class TelegramMenuBot:
                 message += f"   📊 {signal['signal_type']} ({confidence_pct:.1f}%)\n"
                 message += f"   📅 {created_time}\n\n"
 
-        await self.send_message(chat_id, message, self.create_main_menu())
+        # Редактируем существующее сообщение если есть message_id
+        if chat_id in self.user_messages:
+            await self.edit_message(chat_id, self.user_messages[chat_id], message, self.create_main_menu())
+        else:
+            message_id = await self.send_message(chat_id, message, self.create_main_menu())
+            if message_id:
+                self.user_messages[chat_id] = message_id
 
     async def handle_strategies(self, chat_id: int, callback_query_id: str):
         """Обработка кнопки Стратегии"""
@@ -284,7 +326,13 @@ class TelegramMenuBot:
                         
                 message += "\n"
 
-        await self.send_message(chat_id, message, self.create_main_menu())
+        # Редактируем существующее сообщение если есть message_id
+        if chat_id in self.user_messages:
+            await self.edit_message(chat_id, self.user_messages[chat_id], message, self.create_main_menu())
+        else:
+            message_id = await self.send_message(chat_id, message, self.create_main_menu())
+            if message_id:
+                self.user_messages[chat_id] = message_id
 
     async def handle_statistics(self, chat_id: int, callback_query_id: str):
         """Обработка кнопки Статистика"""
