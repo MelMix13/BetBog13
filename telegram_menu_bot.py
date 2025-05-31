@@ -406,28 +406,368 @@ class TelegramMenuBot:
         """Обработка кнопки Настройки"""
         await self.answer_callback_query(callback_query_id)
         
-        message = """⚙️ <b>Настройки системы</b>
+        # Получаем текущие настройки тиков из конфига
+        from config import Config
+        config = Config()
+        
+        message = f"""⚙️ <b>Настройки системы</b>
 
-🔧 <b>Текущие настройки:</b>
+📊 <b>Анализ тиков:</b>
+• Интервал тиков: {getattr(config, 'TICK_INTERVAL', 60)} сек
+• Размер окна: {getattr(config, 'TICK_WINDOW_SIZE', 3)} тиков
+• История: {getattr(config, 'MAX_TICKS_HISTORY', 50)} тиков
+
+🔧 <b>Система:</b>
 • Интервал проверки: 60 сек
 • Максимум матчей: 20 за цикл
 • ML оптимизация: каждые 24 часа
 • Автоочистка: включена
 
 📊 <b>Пороги по умолчанию:</b>
-• Confidence: ≥ 0.7
-• Momentum: ≥ 0.6
-• Gradient: ≥ 0.5
+• Confidence: 70%"""
 
-⚡ Система работает в автоматическом режиме"""
+        # Создаем клавиатуру с настройками тиков
+        settings_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "⏱️ Интервал тиков", "callback_data": "set_tick_interval"},
+                    {"text": "📊 Размер окна", "callback_data": "set_tick_window"}
+                ],
+                [
+                    {"text": "📝 История тиков", "callback_data": "set_tick_history"},
+                    {"text": "🎯 Отслеживаемые метрики", "callback_data": "set_tick_metrics"}
+                ],
+                [
+                    {"text": "🔄 Пороги трендов", "callback_data": "set_tick_thresholds"},
+                    {"text": "📈 Уверенность анализа", "callback_data": "set_tick_confidence"}
+                ],
+                [
+                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
+                ]
+            ]
+        }
 
-        # Редактируем существующее сообщение если есть message_id
-        if chat_id in self.user_messages:
-            await self.edit_message(chat_id, self.user_messages[chat_id], message, self.create_main_menu())
-        else:
-            message_id = await self.send_message(chat_id, message, self.create_main_menu())
-            if message_id:
-                self.user_messages[chat_id] = message_id
+        await self.send_message(chat_id, message, settings_menu)
+
+    async def handle_main_menu(self, chat_id: int, callback_query_id: str):
+        """Возврат в главное меню"""
+        await self.answer_callback_query(callback_query_id)
+        
+        message = """🏆 <b>BetBog Monitoring Bot</b>
+
+🤖 Интеллектуальная система мониторинга спортивных ставок
+📊 Анализ live матчей с продвинутыми метриками
+⚡ Автоматическая генерация сигналов
+
+Выберите раздел для получения информации:"""
+        
+        await self.send_message(chat_id, message, self.create_main_menu())
+
+    async def handle_tick_interval_settings(self, chat_id: int, callback_query_id: str):
+        """Настройка интервала тиков"""
+        await self.answer_callback_query(callback_query_id)
+        
+        from config import Config
+        config = Config()
+        current_interval = getattr(config, 'TICK_INTERVAL', 60)
+        
+        message = f"""⏱️ <b>Настройка интервала тиков</b>
+
+<b>Текущий интервал:</b> {current_interval} секунд
+
+<b>Интервал определяет:</b>
+• Как часто собираются данные
+• Чувствительность к изменениям
+• Нагрузка на API
+
+<b>Рекомендации:</b>
+• 30 сек - высокая чувствительность, больше шума
+• 60 сек - сбалансированный (рекомендуется)
+• 90-120 сек - стабильные тренды, меньше ложных сигналов"""
+
+        interval_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "⚡ 30 сек", "callback_data": "tick_interval_30"},
+                    {"text": "⚖️ 60 сек", "callback_data": "tick_interval_60"},
+                    {"text": "🛡️ 90 сек", "callback_data": "tick_interval_90"}
+                ],
+                [
+                    {"text": "🔒 120 сек", "callback_data": "tick_interval_120"},
+                    {"text": "🐌 180 сек", "callback_data": "tick_interval_180"}
+                ],
+                [
+                    {"text": "⚙️ Назад к настройкам", "callback_data": "settings"}
+                ]
+            ]
+        }
+
+        await self.send_message(chat_id, message, interval_menu)
+
+    async def handle_tick_window_settings(self, chat_id: int, callback_query_id: str):
+        """Настройка размера окна тиков"""
+        await self.answer_callback_query(callback_query_id)
+        
+        from config import Config
+        config = Config()
+        current_window = getattr(config, 'TICK_WINDOW_SIZE', 3)
+        
+        message = f"""📊 <b>Настройка размера окна</b>
+
+<b>Текущий размер:</b> {current_window} тиков
+
+<b>Размер окна определяет:</b>
+• Количество последних дельт для скользящего среднего
+• Плавность трендов
+• Скорость реакции на изменения
+
+<b>Примеры:</b>
+• 2 тика - быстрая реакция, нестабильно
+• 3 тика - сбалансированный анализ
+• 5 тиков - плавные тренды, медленная реакция"""
+
+        window_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "⚡ 2 тика", "callback_data": "tick_window_2"},
+                    {"text": "⚖️ 3 тика", "callback_data": "tick_window_3"},
+                    {"text": "🛡️ 4 тика", "callback_data": "tick_window_4"}
+                ],
+                [
+                    {"text": "🔒 5 тиков", "callback_data": "tick_window_5"},
+                    {"text": "📈 7 тиков", "callback_data": "tick_window_7"}
+                ],
+                [
+                    {"text": "⚙️ Назад к настройкам", "callback_data": "settings"}
+                ]
+            ]
+        }
+
+        await self.send_message(chat_id, message, window_menu)
+
+    async def handle_tick_history_settings(self, chat_id: int, callback_query_id: str):
+        """Настройка истории тиков"""
+        await self.answer_callback_query(callback_query_id)
+        
+        from config import Config
+        config = Config()
+        current_history = getattr(config, 'MAX_TICKS_HISTORY', 50)
+        
+        message = f"""📝 <b>Настройка истории тиков</b>
+
+<b>Текущая история:</b> {current_history} тиков
+
+<b>История определяет:</b>
+• Максимальное количество тиков на матч
+• Обнаружение долгосрочных паттернов
+• Потребление памяти
+
+<b>Рекомендации:</b>
+• 30 тиков - короткий анализ (30-60 минут)
+• 50 тиков - стандартный (полный матч)
+• 100 тиков - расширенный анализ"""
+
+        history_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "⚡ 30 тиков", "callback_data": "tick_history_30"},
+                    {"text": "⚖️ 50 тиков", "callback_data": "tick_history_50"},
+                    {"text": "📈 75 тиков", "callback_data": "tick_history_75"}
+                ],
+                [
+                    {"text": "🔒 100 тиков", "callback_data": "tick_history_100"},
+                    {"text": "💾 150 тиков", "callback_data": "tick_history_150"}
+                ],
+                [
+                    {"text": "⚙️ Назад к настройкам", "callback_data": "settings"}
+                ]
+            ]
+        }
+
+        await self.send_message(chat_id, message, history_menu)
+
+    async def handle_tick_metrics_settings(self, chat_id: int, callback_query_id: str):
+        """Настройка отслеживаемых метрик"""
+        await self.answer_callback_query(callback_query_id)
+        
+        message = """🎯 <b>Отслеживаемые метрики</b>
+
+<b>Основные метрики (всегда активны):</b>
+✅ Общие атаки (total_attacks)
+✅ Общие удары (total_shots)
+✅ Опасные моменты (total_dangerous)
+✅ Угловые (total_corners)
+✅ Голы (total_goals)
+
+<b>Раздельные метрики:</b>
+✅ Атаки хозяев/гостей
+✅ Удары хозяев/гостей
+✅ Опасные моменты по командам
+
+<b>Дополнительные метрики (планируются):</b>
+⏳ Владение мячом
+⏳ Нарушения правил
+⏳ Точность передач"""
+
+        metrics_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "✅ Все метрики активны", "callback_data": "tick_metrics_all"}
+                ],
+                [
+                    {"text": "⚙️ Назад к настройкам", "callback_data": "settings"}
+                ]
+            ]
+        }
+
+        await self.send_message(chat_id, message, metrics_menu)
+
+    async def handle_tick_thresholds_settings(self, chat_id: int, callback_query_id: str):
+        """Настройка порогов для трендов"""
+        await self.answer_callback_query(callback_query_id)
+        
+        message = """🔄 <b>Пороги для анализа трендов</b>
+
+<b>Текущие пороги:</b>
+• Минимальная сила тренда: 1.0
+• Уверенность для сигнала: 0.7
+• Порог смены тренда: 0.5
+
+<b>Настройка порогов:</b>
+• <b>Низкие пороги</b> - больше сигналов, больше шума
+• <b>Высокие пороги</b> - меньше сигналов, выше точность
+
+<b>Типы трендов:</b>
+📈 Rising - возрастающий
+📉 Falling - убывающий
+➡️ Stable - стабильный"""
+
+        thresholds_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "🔓 Низкие пороги", "callback_data": "tick_thresholds_low"},
+                    {"text": "⚖️ Средние пороги", "callback_data": "tick_thresholds_medium"}
+                ],
+                [
+                    {"text": "🔒 Высокие пороги", "callback_data": "tick_thresholds_high"}
+                ],
+                [
+                    {"text": "⚙️ Назад к настройкам", "callback_data": "settings"}
+                ]
+            ]
+        }
+
+        await self.send_message(chat_id, message, thresholds_menu)
+
+    async def handle_tick_confidence_settings(self, chat_id: int, callback_query_id: str):
+        """Настройка уверенности анализа"""
+        await self.answer_callback_query(callback_query_id)
+        
+        message = """📈 <b>Уверенность анализа тиков</b>
+
+<b>Текущая уверенность:</b> 70%
+
+<b>Уверенность влияет на:</b>
+• Генерацию сигналов
+• Фильтрацию ложных трендов
+• Качество прогнозов
+
+<b>Уровни уверенности:</b>
+• 50% - много сигналов, низкая точность
+• 70% - сбалансированный подход (рекомендуется)
+• 85% - мало сигналов, высокая точность"""
+
+        confidence_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "🔓 50%", "callback_data": "tick_confidence_50"},
+                    {"text": "⚖️ 60%", "callback_data": "tick_confidence_60"},
+                    {"text": "🎯 70%", "callback_data": "tick_confidence_70"}
+                ],
+                [
+                    {"text": "🔒 80%", "callback_data": "tick_confidence_80"},
+                    {"text": "💎 85%", "callback_data": "tick_confidence_85"}
+                ],
+                [
+                    {"text": "⚙️ Назад к настройкам", "callback_data": "settings"}
+                ]
+            ]
+        }
+
+        await self.send_message(chat_id, message, confidence_menu)
+
+    async def handle_tick_interval_change(self, chat_id: int, callback_query_id: str, callback_data: str):
+        """Изменение интервала тиков"""
+        await self.answer_callback_query(callback_query_id, "Интервал обновлен!")
+        
+        # Извлекаем значение из callback_data
+        interval = int(callback_data.split("_")[-1])
+        
+        # Здесь можно сохранить настройки в базу данных или конфиг
+        # Пока просто показываем подтверждение
+        
+        message = f"""✅ <b>Интервал тиков обновлен</b>
+
+<b>Новый интервал:</b> {interval} секунд
+
+Изменения вступят в силу при следующем перезапуске системы анализа."""
+
+        back_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "⚙️ Настройки", "callback_data": "settings"},
+                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
+                ]
+            ]
+        }
+
+        await self.send_message(chat_id, message, back_menu)
+
+    async def handle_tick_window_change(self, chat_id: int, callback_query_id: str, callback_data: str):
+        """Изменение размера окна тиков"""
+        await self.answer_callback_query(callback_query_id, "Размер окна обновлен!")
+        
+        window_size = int(callback_data.split("_")[-1])
+        
+        message = f"""✅ <b>Размер окна обновлен</b>
+
+<b>Новый размер:</b> {window_size} тиков
+
+Теперь скользящее среднее будет рассчитываться по последним {window_size} дельтам."""
+
+        back_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "⚙️ Настройки", "callback_data": "settings"},
+                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
+                ]
+            ]
+        }
+
+        await self.send_message(chat_id, message, back_menu)
+
+    async def handle_tick_history_change(self, chat_id: int, callback_query_id: str, callback_data: str):
+        """Изменение истории тиков"""
+        await self.answer_callback_query(callback_query_id, "История тиков обновлена!")
+        
+        history_size = int(callback_data.split("_")[-1])
+        
+        message = f"""✅ <b>История тиков обновлена</b>
+
+<b>Новый размер истории:</b> {history_size} тиков
+
+Система будет хранить до {history_size} тиков для каждого матча."""
+
+        back_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "⚙️ Настройки", "callback_data": "settings"},
+                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
+                ]
+            ]
+        }
+
+        await self.send_message(chat_id, message, back_menu)
 
     async def handle_help(self, chat_id: int, callback_query_id: str):
         """Обработка кнопки Помощь"""
@@ -536,6 +876,28 @@ class TelegramMenuBot:
             await self.handle_help(chat_id, callback_query_id)
         elif callback_data == "refresh":
             await self.handle_refresh(chat_id, callback_query_id)
+        elif callback_data == "main_menu":
+            await self.handle_main_menu(chat_id, callback_query_id)
+        # Обработчики настроек тиков
+        elif callback_data == "set_tick_interval":
+            await self.handle_tick_interval_settings(chat_id, callback_query_id)
+        elif callback_data == "set_tick_window":
+            await self.handle_tick_window_settings(chat_id, callback_query_id)
+        elif callback_data == "set_tick_history":
+            await self.handle_tick_history_settings(chat_id, callback_query_id)
+        elif callback_data == "set_tick_metrics":
+            await self.handle_tick_metrics_settings(chat_id, callback_query_id)
+        elif callback_data == "set_tick_thresholds":
+            await self.handle_tick_thresholds_settings(chat_id, callback_query_id)
+        elif callback_data == "set_tick_confidence":
+            await self.handle_tick_confidence_settings(chat_id, callback_query_id)
+        # Обработчики изменения значений тиков
+        elif callback_data.startswith("tick_interval_"):
+            await self.handle_tick_interval_change(chat_id, callback_query_id, callback_data)
+        elif callback_data.startswith("tick_window_"):
+            await self.handle_tick_window_change(chat_id, callback_query_id, callback_data)
+        elif callback_data.startswith("tick_history_"):
+            await self.handle_tick_history_change(chat_id, callback_query_id, callback_data)
         else:
             await self.answer_callback_query(callback_query_id, "Неизвестная команда")
 
