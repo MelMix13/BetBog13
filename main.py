@@ -33,7 +33,8 @@ class BetBogSystem:
         self.metrics_calculator = MetricsCalculator()
         self.strategies = BettingStrategies(self.config.get_default_thresholds())
         self.ml_optimizer = SimpleOptimizer()
-        self.telegram_bot = SimpleTelegramMenuBot(self.config)
+        # self.telegram_bot = SimpleTelegramMenuBot(self.config)  # Отключен - используется отдельный Menu Bot
+        self.telegram_bot = None
         self.match_monitor = MatchMonitor(self.config)
         self.result_tracker = ResultTracker(self.config)
         self.tick_analyzer = TickAnalyzer(self.config)
@@ -55,9 +56,9 @@ class BetBogSystem:
             self.api_client = APIClient(self.config)
             self.logger.success("API client ready")
             
-            # Initialize Telegram bot
-            await self.telegram_bot.initialize()
-            self.logger.success("Telegram bot initialized")
+            # Telegram bot отключен - используется отдельный Menu Bot
+            # await self.telegram_bot.initialize()
+            self.logger.success("Telegram bot отключен - используется отдельный Menu Bot")
             
             # Initialize monitoring components
             await self.match_monitor.initialize(
@@ -71,7 +72,7 @@ class BetBogSystem:
             # Initialize result tracker
             await self.result_tracker.initialize(
                 self.api_client,
-                self.telegram_bot
+                None  # Telegram bot отключен
             )
             self.logger.success("Result tracker initialized")
             
@@ -145,7 +146,7 @@ class BetBogSystem:
             asyncio.create_task(self.match_monitoring_loop()),
             asyncio.create_task(self.result_tracking_loop()),
             asyncio.create_task(self.ml_optimization_loop()),
-            asyncio.create_task(self.telegram_bot.start_polling()),
+            # asyncio.create_task(self.telegram_bot.start_polling()),  # Отключен
             asyncio.create_task(self.system_maintenance_loop())
         ]
         
@@ -415,7 +416,8 @@ class BetBogSystem:
                 'league': match_obj.league
             }
             
-            await self.telegram_bot.send_signal_notification(signal_data, match_data)
+            # await self.telegram_bot.send_signal_notification(signal_data, match_data)  # Отключено
+            self.logger.info(f"Signal generated: {signal.strategy_name} for {match_obj.home_team} vs {match_obj.away_team}")
             
             # Update strategy statistics
             await self.update_strategy_stats(session, signal.strategy_name, 'signal_generated')
@@ -632,9 +634,9 @@ class BetBogSystem:
         self.running = False
         
         try:
-            # Stop Telegram bot
-            await self.telegram_bot.stop_polling()
-            self.logger.success("Telegram bot stopped")
+            # Telegram bot отключен
+            # await self.telegram_bot.stop_polling()
+            self.logger.success("Telegram bot was disabled")
             
             # Close database connections
             await close_database()
