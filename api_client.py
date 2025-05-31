@@ -98,17 +98,22 @@ class APIClient:
     def parse_match_data(self, match_data: Dict[str, Any]) -> Dict[str, Any]:
         """Parse and normalize match data"""
         try:
+            # Check if match_data is actually a dictionary
+            if not isinstance(match_data, dict):
+                self.logger.error(f"Expected dict, got {type(match_data)}: {str(match_data)[:100]}")
+                return {}
+                
             # Extract basic match info
             match_info = {
                 "id": match_data.get("id"),
-                "home_team": match_data.get("home", {}).get("name", "Unknown"),
-                "away_team": match_data.get("away", {}).get("name", "Unknown"),
-                "league": match_data.get("league", {}).get("name", "Unknown"),
+                "home_team": match_data.get("home", {}).get("name", "Unknown") if isinstance(match_data.get("home"), dict) else "Unknown",
+                "away_team": match_data.get("away", {}).get("name", "Unknown") if isinstance(match_data.get("away"), dict) else "Unknown",
+                "league": match_data.get("league", {}).get("name", "Unknown") if isinstance(match_data.get("league"), dict) else "Unknown",
                 "start_time": self._parse_timestamp(match_data.get("time")),
-                "minute": match_data.get("time", {}).get("minute", 0),
-                "status": match_data.get("time", {}).get("status", "unknown"),
-                "home_score": int(match_data.get("scores", {}).get("home", 0)),
-                "away_score": int(match_data.get("scores", {}).get("away", 0))
+                "minute": match_data.get("timer", {}).get("tm", 0) if isinstance(match_data.get("timer"), dict) else 0,
+                "status": "live" if str(match_data.get("time_status")) == "1" else "finished",
+                "home_score": self._parse_score(match_data.get("ss", "0-0"), "home"),
+                "away_score": self._parse_score(match_data.get("ss", "0-0"), "away")
             }
             
             # Extract statistics if available
@@ -122,19 +127,39 @@ class APIClient:
             self.logger.error(f"Error parsing match data: {str(e)}")
             return {}
     
-    def _parse_timestamp(self, time_data: Dict[str, Any]) -> Optional[datetime]:
+    def _parse_timestamp(self, time_data) -> Optional[datetime]:
         """Parse timestamp from API response"""
         if not time_data:
             return None
             
         try:
-            timestamp = time_data.get("timestamp")
+            # Handle both string and dict formats
+            if isinstance(time_data, str):
+                timestamp = int(time_data)
+            elif isinstance(time_data, dict):
+                timestamp = int(time_data.get("timestamp", 0))
+            else:
+                timestamp = int(time_data)
+                
             if timestamp:
-                return datetime.fromtimestamp(int(timestamp))
+                return datetime.fromtimestamp(timestamp)
         except (ValueError, TypeError):
             pass
             
         return None
+    
+    def _parse_score(self, score_string: str, team: str) -> int:
+        """Parse score from string like '1-2'"""
+        try:
+            if not score_string or '-' not in score_string:
+                return 0
+            home_score, away_score = score_string.split('-')
+            if team == "home":
+                return int(home_score.strip())
+            else:
+                return int(away_score.strip())
+        except (ValueError, AttributeError):
+            return 0
     
     def _normalize_stats(self, stats_data: Dict[str, Any]) -> Dict[str, Any]:
         """Normalize statistics data"""

@@ -14,7 +14,7 @@ from api_client import APIClient
 from metrics_calculator import MetricsCalculator, MatchMetrics
 from strategies import BettingStrategies, SignalResult
 from simple_optimizer import SimpleOptimizer
-from simple_bot import SimpleBettingBot
+from telegram_menu_bot import BetBogTelegramBot
 from match_monitor import MatchMonitor
 from result_tracker import ResultTracker
 from logger import BetBogLogger
@@ -148,12 +148,8 @@ class BetBogSystem:
         ]
         
         try:
-            # Wait for any task to complete (which shouldn't happen in normal operation)
-            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-            
-            # Cancel remaining tasks
-            for task in pending:
-                task.cancel()
+            # Wait for all tasks to complete or run indefinitely
+            await asyncio.gather(*tasks, return_exceptions=True)
                 
         except KeyboardInterrupt:
             self.logger.warning("Received interrupt signal")
@@ -196,10 +192,14 @@ class BetBogSystem:
                 processed_count = 0
                 for match_data in live_matches[:self.config.MAX_CONCURRENT_MATCHES]:
                     try:
+                        # Skip non-dict entries
+                        if not isinstance(match_data, dict):
+                            continue
                         await self.process_match(match_data)
                         processed_count += 1
                     except Exception as e:
-                        self.logger.error(f"Error processing match {match_data.get('id')}: {str(e)}")
+                        match_id = match_data.get('id', 'unknown') if isinstance(match_data, dict) else 'unknown'
+                        self.logger.error(f"Error processing match {match_id}: {str(e)}")
                 
                 self.logger.info(f"Processed {processed_count} matches")
                 
