@@ -208,8 +208,43 @@ class FootballStrategies:
         return None
 
     async def analyze_under_2_5_goals(self, metrics: MatchMetrics, match_data: Dict[str, Any], minute: int) -> Optional[SignalResult]:
-        """Тотал меньше 2.5 голов - анализ с историей команд"""
+        """Тотал меньше 2.5 голов - анализ разности между 1-м и 40-м тиком"""
         config = self.config.get("under_2_5_goals", {})
+        
+        # Получаем историю тиков для анализа разности
+        match_id = match_data.get('match_id')
+        if not match_id:
+            return None
+        
+        # Получаем первый и 40-й тик для анализа
+        try:
+            from main import db_session
+            if db_session is None:
+                return None
+                
+            # Получаем первый тик (самый ранний)
+            first_tick = db_session.query(MatchMetrics)\
+                .filter(MatchMetrics.match_id == match_id)\
+                .order_by(MatchMetrics.created_at.asc())\
+                .first()
+            
+            # Получаем 40-й тик или близкий к нему
+            fortieth_tick = db_session.query(MatchMetrics)\
+                .filter(MatchMetrics.match_id == match_id)\
+                .order_by(MatchMetrics.created_at.asc())\
+                .offset(39)\
+                .first()
+            
+            # Если нет достаточно тиков, используем текущие метрики как 40-й тик
+            if not first_tick:
+                return None
+            if not fortieth_tick:
+                fortieth_tick = metrics
+                
+        except Exception as e:
+            # Fallback к текущим метрикам
+            first_tick = metrics
+            fortieth_tick = metrics
         
         # Получаем названия команд
         home_team = match_data.get('home_team', '')
@@ -222,27 +257,50 @@ class FootballStrategies:
             self.logger.warning(f"Ошибка исторического анализа: {e}")
             historical_prediction = {"status": "error"}
         
-        # Текущие метрики матча
-        dxg_combined = metrics.dxg_home + metrics.dxg_away
+        # Рассчитываем разности метрик между 1-м и 40-м тиком
+        delta_dxg_home = fortieth_tick.dxg_home - first_tick.dxg_home
+        delta_dxg_away = fortieth_tick.dxg_away - first_tick.dxg_away
+        delta_dxg_combined = delta_dxg_home + delta_dxg_away
+        
+        delta_gradient_home = fortieth_tick.gradient_home - first_tick.gradient_home
+        delta_gradient_away = fortieth_tick.gradient_away - first_tick.gradient_away
+        
+        delta_momentum_home = fortieth_tick.momentum_home - first_tick.momentum_home
+        delta_momentum_away = fortieth_tick.momentum_away - first_tick.momentum_away
+        
+        delta_stability_home = fortieth_tick.stability_home - first_tick.stability_home
+        delta_stability_away = fortieth_tick.stability_away - first_tick.stability_away
+        
+        delta_wave_amplitude = fortieth_tick.wave_amplitude - first_tick.wave_amplitude
+        
+        # Текущие метрики для дополнительной проверки
         attacks_total = match_data.get('attacks_home', 0) + match_data.get('attacks_away', 0)
         shots_total = match_data.get('shots_home', 0) + match_data.get('shots_away', 0)
         
-        # Стабильность обороны
-        stability_avg = (metrics.stability_home + metrics.stability_away) / 2
-        shots_per_attack = (metrics.shots_per_attack_home + metrics.shots_per_attack_away) / 2
-        
-        # Низкое качество атак
-        low_danger = match_data.get('dangerous_attacks_home', 0) + match_data.get('dangerous_attacks_away', 0) <= 4
-        
-        # Базовые условия игры
+        # Анализ условий для Under 2.5 на основе разностей
         live_conditions = []
-        live_conditions.append(dxg_combined <= config.get("max_dxg_combined", 1.8))
+        
+        # 1. Слабый рост опасности (delta DXG)
+        live_conditions.append(delta_dxg_combined <= config.get("max_delta_dxg", 1.2))
+        
+        # 2. Стабильные градиенты (небольшие изменения)
+        live_conditions.append(abs(delta_gradient_home) <= config.get("max_delta_gradient", 0.4))
+        live_conditions.append(abs(delta_gradient_away) <= config.get("max_delta_gradient", 0.4))
+        
+        # 3. Низкий рост импульса атак
+        live_conditions.append(delta_momentum_home <= config.get("max_delta_momentum", 0.3))
+        live_conditions.append(delta_momentum_away <= config.get("max_delta_momentum", 0.3))
+        
+        # 4. Укрепление обороны (рост стабильности)
+        live_conditions.append(delta_stability_home >= config.get("min_delta_stability", -0.1))
+        live_conditions.append(delta_stability_away >= config.get("min_delta_stability", -0.1))
+        
+        # 5. Спокойная игра (малые колебания)
+        live_conditions.append(delta_wave_amplitude <= config.get("max_delta_wave", 0.25))
+        
+        # 6. Общие ограничения
         live_conditions.append(attacks_total <= config.get("max_attacks_total", 18))
-        live_conditions.append(stability_avg >= config.get("min_stability_both", 0.7))
-        live_conditions.append(shots_per_attack <= config.get("max_shots_per_attack", 0.65))
-        live_conditions.append(metrics.wave_amplitude <= config.get("max_wave_amplitude", 0.35))
-        live_conditions.append(low_danger)
-        live_conditions.append(shots_total <= 12)
+        live_conditions.append(shots_total <= config.get("max_shots_total", 12))
         
         live_conditions_met = sum(live_conditions)
         
@@ -283,46 +341,59 @@ class FootballStrategies:
                     historical_factor += 0.1
                     reasoning_parts.append(f"Гости в выезде: {away_away_avg:.1f}")
         
-        # Нужно минимум 4 из 7 условий + положительный исторический фактор для under
-        min_conditions = 4 if historical_factor > 1.0 else 5
+        # Добавляем анализ разностей в обоснование
+        delta_analysis = []
+        if delta_dxg_combined <= 1.0:
+            delta_analysis.append(f"Δ Опасность: {delta_dxg_combined:.2f}")
+        if abs(delta_gradient_home) <= 0.3 and abs(delta_gradient_away) <= 0.3:
+            delta_analysis.append("Стабильные градиенты")
+        if delta_momentum_home <= 0.2 and delta_momentum_away <= 0.2:
+            delta_analysis.append("Низкий рост атак")
+        if delta_wave_amplitude <= 0.2:
+            delta_analysis.append("Спокойная игра")
+        
+        if delta_analysis:
+            reasoning_parts.extend(delta_analysis)
+        
+        # Нужно минимум 7 из 11 условий + положительный исторический фактор
+        min_conditions = 7 if historical_factor > 1.0 else 8
         
         if live_conditions_met >= min_conditions:
-            # Базовая уверенность от текущей игры
-            base_confidence = (live_conditions_met / 7) * 0.75
+            # Базовая уверенность от разностного анализа
+            base_confidence = (live_conditions_met / 11) * 0.8
             
             # Исторический бонус
             if historical_confidence > 0:
                 base_confidence = (base_confidence * 0.7) + (historical_confidence * 0.3)
             
-            # Бонусы за оборонительную игру
-            if stability_avg >= 0.85:
+            # Бонусы за особые факторы в разностях
+            if delta_dxg_combined <= 0.8:
                 base_confidence += 0.05
-            if dxg_combined <= 1.4:
-                base_confidence += 0.04
-            if shots_per_attack <= 0.5:
-                base_confidence += 0.03
+            if delta_stability_home >= 0 and delta_stability_away >= 0:
+                base_confidence += 0.03  # Укрепление обеих оборон
+            if minute >= 45 and delta_momentum_home <= 0.1 and delta_momentum_away <= 0.1:
+                base_confidence += 0.04  # Поздняя фаза без роста атак
                 
             final_confidence = min(0.85, base_confidence * historical_factor)
             
-            # Формируем обоснование
-            live_reasoning = f"Оборонительная игра: dxG={dxg_combined:.2f}, стабильность={stability_avg:.2f}, удары/атака={shots_per_attack:.2f}"
-            if reasoning_parts:
-                full_reasoning = live_reasoning + " | " + ", ".join(reasoning_parts)
-            else:
-                full_reasoning = live_reasoning
+            # Формируем обоснование на основе анализа 40 тиков
+            reasoning = "Анализ 40 тиков: " + ", ".join(reasoning_parts) if reasoning_parts else "Стабильная оборонительная игра"
                 
             return SignalResult(
                 strategy_name="under_2_5_goals",
-                signal_type="total_goals",
+                signal_type="under_2_5",
                 confidence=final_confidence,
-                prediction="under_2.5",
-                threshold_used=config.get("max_dxg_combined", 1.8),
-                reasoning=full_reasoning,
+                prediction="Under 2.5 Goals",
+                threshold_used=config.get("confidence_threshold", 0.65),
+                reasoning=reasoning,
                 trigger_metrics={
-                    "dxg_combined": dxg_combined, 
-                    "stability_both": stability_avg, 
-                    "shots_per_attack": shots_per_attack,
-                    "historical_factor": historical_factor
+                    "delta_dxg_combined": delta_dxg_combined, 
+                    "delta_momentum_avg": (delta_momentum_home + delta_momentum_away) / 2,
+                    "delta_wave_amplitude": delta_wave_amplitude,
+                    "attacks_total": float(attacks_total), 
+                    "shots_total": float(shots_total),
+                    "historical_factor": historical_factor,
+                    "conditions_met": live_conditions_met
                 },
                 recommended_odds=self.default_odds["under_2_5_goals"]
             )
