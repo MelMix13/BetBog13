@@ -28,6 +28,13 @@ class MatchMetrics:
     shots_away: int = 0
     corners_home: int = 0
     corners_away: int = 0
+    
+    # Full metrics for totals strategies
+    total_attacks: int = 0
+    total_shots: int = 0
+    total_dangerous: int = 0
+    total_corners: int = 0
+    total_goals: int = 0
     possession_home: float = 50.0
     possession_away: float = 50.0
     dangerous_home: int = 0

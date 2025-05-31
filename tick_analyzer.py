@@ -235,6 +235,28 @@ class TickAnalyzer:
         """Получить все скользящие средние для матча"""
         return self.match_moving_averages.get(match_id, {})
     
+    def get_current_full_metrics(self, match_id: str) -> Dict[str, Any]:
+        """Получить полные текущие метрики для стратегий тоталов"""
+        if match_id not in self.match_ticks or not self.match_ticks[match_id]:
+            return {}
+        
+        # Берем последний тик
+        latest_tick = self.match_ticks[match_id][-1]
+        
+        # Возвращаем полные метрики вместо дельт
+        return {
+            'total_attacks': latest_tick.attacks_home + latest_tick.attacks_away,
+            'total_shots': latest_tick.shots_home + latest_tick.shots_away, 
+            'total_dangerous': latest_tick.dangerous_attacks_home + latest_tick.dangerous_attacks_away,
+            'total_corners': latest_tick.corners_home + latest_tick.corners_away,
+            'total_goals': latest_tick.home_score + latest_tick.away_score,
+            'attacks_home': latest_tick.attacks_home,
+            'attacks_away': latest_tick.attacks_away,
+            'shots_home': latest_tick.shots_home,
+            'shots_away': latest_tick.shots_away,
+            'minute': latest_tick.minute
+        }
+    
     def get_trend_analysis(self, match_id: str) -> Dict[str, Any]:
         """Получить анализ трендов для матча"""
         if match_id not in self.match_moving_averages:
