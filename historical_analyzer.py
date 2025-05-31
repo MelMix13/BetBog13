@@ -34,7 +34,7 @@ class HistoricalAnalyzer:
             query = """
             SELECT 
                 home_team, away_team, home_score, away_score,
-                match_date, league, season
+                match_date, league
             FROM matches 
             WHERE (home_team ILIKE $1 OR away_team ILIKE $1)
             AND match_date >= $2

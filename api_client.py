@@ -82,26 +82,50 @@ class APIClient:
     
     async def get_finished_matches(self, 
                                  days_back: int = 1, 
-                                 sport_id: int = 1) -> List[Dict[str, Any]]:
-        """Get finished matches from recent days"""
+                                 sport_id: int = 1,
+                                 league_id: str = None,
+                                 team_id: str = None) -> List[Dict[str, Any]]:
+        """Get finished matches with real results from recent days"""
         all_matches = []
         
         # Получаем данные за каждый день отдельно
         for day_offset in range(days_back):
-            target_date = datetime.now() - timedelta(days=day_offset)
+            target_date = datetime.now() - timedelta(days=day_offset + 1)  # Вчерашние и более ранние матчи
             
             params = {
                 "sport_id": sport_id,
                 "day": target_date.strftime("%Y%m%d"),
-                "token": self.config.API_TOKEN
+                "token": self.config.API_TOKEN,
+                "page": 1
             }
             
+            # Добавляем дополнительные фильтры если указаны
+            if league_id:
+                params["league_id"] = league_id
+            if team_id:
+                params["team_id"] = team_id
+            
             try:
-                self.logger.info(f"Requesting historical matches for {target_date.strftime('%Y-%m-%d')}")
+                self.logger.info(f"Requesting ended matches for {target_date.strftime('%Y-%m-%d')}")
                 data = await self._make_request(self.config.HISTORY_ENDPOINT, params)
                 matches = data.get("results", [])
-                self.logger.info(f"Received {len(matches)} matches for {target_date.strftime('%Y-%m-%d')}")
-                all_matches.extend(matches)
+                
+                # Фильтруем только матчи с реальными результатами
+                real_matches = []
+                for match in matches:
+                    parsed = self.parse_match_data(match)
+                    home_score = parsed.get('home_score')
+                    away_score = parsed.get('away_score')
+                    
+                    # Проверяем что это завершенный матч с реальным счетом
+                    if (home_score is not None and away_score is not None and 
+                        isinstance(home_score, int) and isinstance(away_score, int) and
+                        parsed.get('status') == 'finished'):
+                        real_matches.append(match)
+                
+                self.logger.info(f"Found {len(real_matches)} finished matches with scores for {target_date.strftime('%Y-%m-%d')}")
+                all_matches.extend(real_matches)
+                
             except Exception as e:
                 self.logger.warning(f"Failed to get matches for {target_date.strftime('%Y-%m-%d')}: {e}")
                 continue
