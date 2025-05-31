@@ -173,7 +173,7 @@ class TelegramMenuBot:
         
         try:
             query = """
-                SELECT strategy_name, enabled, total_signals, win_rate
+                SELECT strategy_name, total_signals, win_rate
                 FROM strategy_configs 
                 ORDER BY strategy_name
             """
@@ -301,7 +301,7 @@ class TelegramMenuBot:
             message = "🎯 <b>Активные стратегии</b>\n\n"
             
             for strategy in strategies:
-                status_emoji = "🟢" if strategy.get('enabled', True) else "🔴"
+                status_emoji = "🟢"  # Все стратегии активны по умолчанию
                 strategy_name = strategy['strategy_name']
                 total_signals = strategy.get('total_signals', 0)
                 win_rate = strategy.get('win_rate', 0)
@@ -384,7 +384,13 @@ class TelegramMenuBot:
 
 ⚡ Система работает в автоматическом режиме"""
 
-        await self.send_message(chat_id, message, self.create_main_menu())
+        # Редактируем существующее сообщение если есть message_id
+        if chat_id in self.user_messages:
+            await self.edit_message(chat_id, self.user_messages[chat_id], message, self.create_main_menu())
+        else:
+            message_id = await self.send_message(chat_id, message, self.create_main_menu())
+            if message_id:
+                self.user_messages[chat_id] = message_id
 
     async def handle_help(self, chat_id: int, callback_query_id: str):
         """Обработка кнопки Помощь"""
@@ -410,7 +416,13 @@ class TelegramMenuBot:
 
 ⚡ Система работает 24/7 без нейронных сетей"""
 
-        await self.send_message(chat_id, message, self.create_main_menu())
+        # Редактируем существующее сообщение если есть message_id
+        if chat_id in self.user_messages:
+            await self.edit_message(chat_id, self.user_messages[chat_id], message, self.create_main_menu())
+        else:
+            message_id = await self.send_message(chat_id, message, self.create_main_menu())
+            if message_id:
+                self.user_messages[chat_id] = message_id
 
     async def handle_refresh(self, chat_id: int, callback_query_id: str):
         """Обработка кнопки Обновить"""
@@ -432,7 +444,13 @@ class TelegramMenuBot:
 
 Выберите раздел для подробной информации:"""
 
-        await self.send_message(chat_id, message, self.create_main_menu())
+        # Редактируем существующее сообщение если есть message_id
+        if chat_id in self.user_messages:
+            await self.edit_message(chat_id, self.user_messages[chat_id], message, self.create_main_menu())
+        else:
+            message_id = await self.send_message(chat_id, message, self.create_main_menu())
+            if message_id:
+                self.user_messages[chat_id] = message_id
 
     async def handle_command(self, chat_id: int, text: str, user_name: str):
         """Обработка команд пользователя"""
@@ -447,13 +465,21 @@ class TelegramMenuBot:
 
 Выберите раздел для получения информации:"""
             
-            await self.send_message(chat_id, message, self.create_main_menu())
+            message_id = await self.send_message(chat_id, message, self.create_main_menu())
+            if message_id:
+                self.user_messages[chat_id] = message_id
             
         else:
             message = f"""Команда: <code>{text}</code>
 
 Используйте /start для открытия главного меню с кнопками."""
-            await self.send_message(chat_id, message, self.create_main_menu())
+            # Редактируем существующее сообщение если есть message_id
+            if chat_id in self.user_messages:
+                await self.edit_message(chat_id, self.user_messages[chat_id], message, self.create_main_menu())
+            else:
+                message_id = await self.send_message(chat_id, message, self.create_main_menu())
+                if message_id:
+                    self.user_messages[chat_id] = message_id
 
     async def handle_callback(self, chat_id: int, callback_data: str, callback_query_id: str):
         """Обработка нажатий на кнопки"""
