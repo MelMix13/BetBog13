@@ -13,7 +13,7 @@ from api_client import APIClient
 from metrics_calculator import MetricsCalculator, MatchMetrics
 from strategies import BettingStrategies, SignalResult
 from simple_optimizer import SimpleOptimizer
-from bot import TelegramBot
+from simple_bot import SimpleBettingBot
 from match_monitor import MatchMonitor
 from result_tracker import ResultTracker
 from logger import BetBogLogger
@@ -31,7 +31,7 @@ class BetBogSystem:
         self.metrics_calculator = MetricsCalculator()
         self.strategies = BettingStrategies(self.config.get_default_thresholds())
         self.ml_optimizer = SimpleOptimizer()
-        self.telegram_bot = TelegramBot(self.config)
+        self.telegram_bot = SimpleBettingBot(self.config)
         self.match_monitor = MatchMonitor(self.config)
         self.result_tracker = ResultTracker(self.config)
         
