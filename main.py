@@ -170,53 +170,58 @@ class BetBogSystem:
         """Main match monitoring loop"""
         self.logger.info("Started match monitoring loop")
         
+        last_match_search = 0
+        active_matches = []
+        
         while self.running:
             try:
-                # Get live matches
-                if self.api_client:
-                    async with self.api_client:
-                        live_matches = await self.api_client.get_live_matches()
-                else:
-                    live_matches = []
+                current_time = time.time()
                 
-                if not live_matches:
-                    self.logger.info("No live matches found, checking recent finished matches for analysis")
-                    # Get recent finished matches for demonstration and analysis
+                # Search for new matches every 30 seconds (tick interval)
+                if current_time - last_match_search >= self.config.TICK_INTERVAL:
+                    self.logger.info("Searching for new matches...")
+                    
                     if self.api_client:
                         async with self.api_client:
-                            finished_matches = await self.api_client.get_finished_matches(days_back=1)
-                            if finished_matches:
-                                # Take first 3 finished matches and analyze them
-                                live_matches = finished_matches[:3]
-                                self.logger.success(f"Found {len(live_matches)} recent matches for analysis")
+                            live_matches = await self.api_client.get_live_matches()
+                    else:
+                        live_matches = []
                     
                     if not live_matches:
-                        self.logger.info("No matches available for processing")
-                        await asyncio.sleep(self.config.MATCH_CHECK_INTERVAL)
-                        continue
+                        self.logger.info("No live matches found, checking recent finished matches for analysis")
+                        if self.api_client:
+                            async with self.api_client:
+                                finished_matches = await self.api_client.get_finished_matches(days_back=1)
+                                if finished_matches:
+                                    live_matches = finished_matches[:3]
+                                    self.logger.success(f"Found {len(live_matches)} recent matches for analysis")
+                    
+                    # Update active matches list
+                    active_matches = []
+                    for match_data in live_matches:
+                        if isinstance(match_data, dict) and not self._is_virtual_match(match_data):
+                            active_matches.append(match_data)
+                    
+                    last_match_search = current_time
+                    self.logger.success(f"Found {len(active_matches)} active matches to monitor")
                 
-                # Process each match - убрано ограничение на количество матчей
-                processed_count = 0
-                for match_data in live_matches:
-                    try:
-                        # Skip non-dict entries
-                        if not isinstance(match_data, dict):
-                            continue
-                        
-                        # Фильтр виртуальных матчей
-                        if self._is_virtual_match(match_data):
-                            continue
-                            
-                        await self.process_match(match_data)
-                        processed_count += 1
-                    except Exception as e:
-                        match_id = match_data.get('id', 'unknown') if isinstance(match_data, dict) else 'unknown'
-                        self.logger.error(f"Error processing match {match_id}: {str(e)}")
+                # Analyze active matches every 30 seconds (tick interval)
+                if active_matches:
+                    processed_count = 0
+                    for match_data in active_matches:
+                        try:
+                            await self.process_match(match_data)
+                            processed_count += 1
+                        except Exception as e:
+                            match_id = match_data.get('id', 'unknown')
+                            self.logger.error(f"Error processing match {match_id}: {str(e)}")
+                    
+                    self.logger.info(f"Analyzed {processed_count} active matches")
+                else:
+                    self.logger.info("No active matches to analyze")
                 
-                self.logger.info(f"Processed {processed_count} matches")
-                
-                # Wait before next check
-                await asyncio.sleep(self.config.MATCH_CHECK_INTERVAL)
+                # Wait for next tick (30 seconds)
+                await asyncio.sleep(self.config.TICK_INTERVAL)
                 
             except Exception as e:
                 self.logger.error(f"Match monitoring loop error: {str(e)}")

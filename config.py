@@ -42,7 +42,7 @@ class Config:
     FEATURE_IMPORTANCE_THRESHOLD: float = 0.1
     
     # Monitoring Configuration
-    MATCH_CHECK_INTERVAL: int = 30  # seconds - 1 тик каждые 30 секунд
+    MATCH_CHECK_INTERVAL: int = 300  # seconds - проверка новых матчей каждые 5 минут
     RESULT_CHECK_INTERVAL: int = 300  # seconds
     # MAX_CONCURRENT_MATCHES удалено - теперь обрабатываем все матчи без ограничений
     
