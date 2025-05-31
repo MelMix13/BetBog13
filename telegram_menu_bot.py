@@ -546,7 +546,8 @@ class TelegramMenuBot:
             ]
         }
 
-        await self.send_message(chat_id, message, settings_menu)
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      settings_menu, "loading")
 
     async def handle_main_menu(self, chat_id: int, callback_query_id: str):
         """Возврат в главное меню"""
@@ -601,7 +602,8 @@ class TelegramMenuBot:
             ]
         }
 
-        await self.send_message(chat_id, message, interval_menu)
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      interval_menu, "loading")
 
     async def handle_tick_window_settings(self, chat_id: int, callback_query_id: str):
         """Настройка размера окна тиков"""
@@ -642,7 +644,8 @@ class TelegramMenuBot:
             ]
         }
 
-        await self.send_message(chat_id, message, window_menu)
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      window_menu, "loading")
 
     async def handle_tick_history_settings(self, chat_id: int, callback_query_id: str):
         """Настройка истории тиков"""
@@ -683,7 +686,8 @@ class TelegramMenuBot:
             ]
         }
 
-        await self.send_message(chat_id, message, history_menu)
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      history_menu, "loading")
 
     async def handle_tick_metrics_settings(self, chat_id: int, callback_query_id: str):
         """Настройка отслеживаемых метрик"""
@@ -719,7 +723,8 @@ class TelegramMenuBot:
             ]
         }
 
-        await self.send_message(chat_id, message, metrics_menu)
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      metrics_menu, "loading")
 
     async def handle_tick_thresholds_settings(self, chat_id: int, callback_query_id: str):
         """Настройка порогов для трендов"""
@@ -756,7 +761,8 @@ class TelegramMenuBot:
             ]
         }
 
-        await self.send_message(chat_id, message, thresholds_menu)
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      thresholds_menu, "loading")
 
     async def handle_tick_confidence_settings(self, chat_id: int, callback_query_id: str):
         """Настройка уверенности анализа"""
@@ -793,7 +799,8 @@ class TelegramMenuBot:
             ]
         }
 
-        await self.send_message(chat_id, message, confidence_menu)
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      confidence_menu, "loading")
 
     async def handle_tick_interval_change(self, chat_id: int, callback_query_id: str, callback_data: str):
         """Изменение интервала тиков"""
