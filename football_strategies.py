@@ -21,6 +21,7 @@ class SignalResult:
     trigger_metrics: Dict[str, float]
     recommended_odds: float = 0.0
     stake_multiplier: float = 1.0
+    team_stats: Optional[Dict[str, Any]] = None
 
 class FootballStrategies:
     """Продвинутые футбольные стратегии с адаптивными порогами"""

@@ -308,32 +308,17 @@ class BetBogSystem:
                 if hasattr(self, 'tick_analyzer'):
                     full_metrics = self.tick_analyzer.get_current_full_metrics(match_id)
                     if full_metrics:
-                        # Создаем специальные метрики для стратегий тоталов
-                        from metrics_calculator import MatchMetrics
-                        strategy_metrics = MatchMetrics(
-                            total_attacks=full_metrics.get('total_attacks', 0),
-                            total_shots=full_metrics.get('total_shots', 0),
-                            total_dangerous=full_metrics.get('total_dangerous', 0),
-                            total_corners=full_metrics.get('total_corners', 0),
-                            total_goals=full_metrics.get('total_goals', 0),
-                            attacks_home=full_metrics.get('attacks_home', 0),
-                            attacks_away=full_metrics.get('attacks_away', 0),
-                            shots_home=full_metrics.get('shots_home', 0),
-                            shots_away=full_metrics.get('shots_away', 0),
-                            dxg_home=current_metrics.dxg_home,
-                            dxg_away=current_metrics.dxg_away,
-                            gradient_home=current_metrics.gradient_home,
-                            gradient_away=current_metrics.gradient_away,
-                            wave_amplitude=current_metrics.wave_amplitude,
-                            tiredness_home=current_metrics.tiredness_home,
-                            tiredness_away=current_metrics.tiredness_away,
-                            momentum_home=current_metrics.momentum_home,
-                            momentum_away=current_metrics.momentum_away,
-                            stability_home=current_metrics.stability_home,
-                            stability_away=current_metrics.stability_away,
-                            shots_per_attack_home=current_metrics.shots_per_attack_home,
-                            shots_per_attack_away=current_metrics.shots_per_attack_away
-                        )
+                        # Обновляем существующие метрики полными значениями для тоталов
+                        strategy_metrics = current_metrics
+                        strategy_metrics.total_attacks = full_metrics.get('total_attacks', 0)
+                        strategy_metrics.total_shots = full_metrics.get('total_shots', 0)
+                        strategy_metrics.total_dangerous = full_metrics.get('total_dangerous', 0)
+                        strategy_metrics.total_corners = full_metrics.get('total_corners', 0)
+                        strategy_metrics.total_goals = full_metrics.get('total_goals', 0)
+                        strategy_metrics.attacks_home = full_metrics.get('attacks_home', 0)
+                        strategy_metrics.attacks_away = full_metrics.get('attacks_away', 0)
+                        strategy_metrics.shots_home = full_metrics.get('shots_home', 0)
+                        strategy_metrics.shots_away = full_metrics.get('shots_away', 0)
                 
                 signals = self.strategies.analyze_all_strategies(
                     strategy_metrics, parsed_match, minute
@@ -341,6 +326,13 @@ class BetBogSystem:
                 
                 # Process any generated signals
                 for signal in signals:
+                    # Get team statistics for totals strategies before processing
+                    if signal.strategy_name in ['under_2_5_goals', 'over_2_5_goals']:
+                        home_team = parsed_match.get('home_team', '')
+                        away_team = parsed_match.get('away_team', '')
+                        team_stats = await self._get_teams_totals_stats(home_team, away_team)
+                        signal.team_stats = team_stats  # Store in signal object
+                    
                     await self.process_signal(session, signal, match_obj, current_metrics)
                 
                 # Очистка данных тиков для завершенных матчей (после 90+ минут)
@@ -797,15 +789,13 @@ class BetBogSystem:
     async def _get_teams_totals_stats(self, home_team: str, away_team: str) -> Dict[str, Any]:
         """Получить статистику тоталов для команд из исторических данных"""
         try:
-            # Используем существующий сборщик данных для получения реальной статистики
-            from data_collector import DataCollector
-            
-            # Инициализируем сборщик данных
-            data_collector = DataCollector(self.config)
+            self.logger.info(f"Запрос статистики команд: {home_team} vs {away_team}")
             
             # Получаем исторические данные для команд через API
             home_matches = await self.api_client.get_team_matches(home_team, days_back=30)
             away_matches = await self.api_client.get_team_matches(away_team, days_back=30)
+            
+            self.logger.info(f"Найдено матчей: {home_team} = {len(home_matches) if home_matches else 0}, {away_team} = {len(away_matches) if away_matches else 0}")
             
             if not home_matches and not away_matches:
                 self.logger.warning(f"Нет исторических данных через API для команд {home_team} vs {away_team}")

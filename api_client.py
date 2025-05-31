@@ -156,6 +156,31 @@ class APIClient:
         
         return all_matches
     
+    async def get_team_matches(self, team_name: str, days_back: int = 30) -> List[Dict[str, Any]]:
+        """Get specific team's matches from recent period"""
+        try:
+            # Получаем завершенные матчи за указанный период
+            matches = await self.get_finished_matches(days_back=days_back)
+            
+            # Фильтруем матчи для конкретной команды
+            team_matches = []
+            for match in matches:
+                parsed = self.parse_match_data(match)
+                home_team = parsed.get('home_team', '').lower()
+                away_team = parsed.get('away_team', '').lower()
+                search_name = team_name.lower()
+                
+                # Проверяем вхождение названия команды
+                if search_name in home_team or search_name in away_team or home_team in search_name or away_team in search_name:
+                    team_matches.append(parsed)
+            
+            self.logger.info(f"Found {len(team_matches)} matches for team '{team_name}' in last {days_back} days")
+            return team_matches
+            
+        except Exception as e:
+            self.logger.error(f"Error getting team matches for {team_name}: {str(e)}")
+            return []
+    
     async def get_upcoming_matches(self, 
                                  days_ahead: int = 1, 
                                  sport_id: int = 1,
