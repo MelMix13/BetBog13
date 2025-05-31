@@ -128,8 +128,8 @@ class MetricsCalculator:
             possession_away=possession_away,
             dangerous_home=dangerous_attacks_home,
             dangerous_away=dangerous_attacks_away,
-            goals_home=stats.get('goals_home', 0),
-            goals_away=stats.get('goals_away', 0)
+            goals_home=current_stats.get('goals_home', 0),
+            goals_away=current_stats.get('goals_away', 0)
         )
     
     def _calculate_dxg(self, 
