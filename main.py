@@ -466,6 +466,7 @@ class BetBogSystem:
             
             session.add(signal_record)
             await session.flush()  # Get the ID
+            await session.commit()  # Немедленно сохраняем сигнал в базу
             
             # Log signal
             self.logger.strategy_signal(
