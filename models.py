@@ -104,6 +104,8 @@ class StrategyConfig(Base):
     winning_signals = Column(Integer, default=0)
     total_profit = Column(Float, default=0.0)
     roi = Column(Float, default=0.0)
+    win_rate = Column(Float, default=0.0)
+    enabled = Column(Boolean, default=True)
     
     # ML optimization
     last_optimized = Column(DateTime)
