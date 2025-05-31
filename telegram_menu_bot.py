@@ -185,6 +185,21 @@ class TelegramMenuBot:
         finally:
             await conn.close()
 
+    def format_strategy_name(self, strategy_name: str) -> str:
+        """Форматирование названия стратегии для отображения"""
+        strategy_names = {
+            "over_2_5_goals": "⚽ Тотал больше 2.5",
+            "under_2_5_goals": "🛡️ Тотал меньше 2.5", 
+            "btts_yes": "🥅 Обе забьют ДА",
+            "btts_no": "🚫 Обе забьют НЕТ",
+            "home_win": "🏠 Победа хозяев",
+            "away_win": "✈️ Победа гостей",
+            "draw": "🤝 Ничья",
+            "next_goal_home": "🎯 След. гол - хозяева",
+            "next_goal_away": "🎯 След. гол - гости"
+        }
+        return strategy_names.get(strategy_name, f"📋 {strategy_name}")
+
     async def get_system_statistics(self):
         """Получение статистики системы"""
         conn = await self.get_db_connection()
@@ -306,7 +321,9 @@ class TelegramMenuBot:
                 total_signals = strategy.get('total_signals', 0)
                 win_rate = strategy.get('win_rate', 0)
                 
-                message += f"{status_emoji} <b>{strategy_name}</b>\n"
+                # Форматируем название стратегии
+                display_name = self.format_strategy_name(strategy_name)
+                message += f"{status_emoji} <b>{display_name}</b>\n"
                 message += f"   📊 Сигналов: {total_signals}\n"
                 message += f"   🎯 Win Rate: {win_rate:.1f}%\n"
                 
