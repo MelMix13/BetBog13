@@ -422,7 +422,9 @@ class BetBogSystem:
             match_data = {
                 'home_team': match_obj.home_team,
                 'away_team': match_obj.away_team,
-                'league': match_obj.league
+                'league': match_obj.league,
+                'home_score': match_obj.home_score,
+                'away_score': match_obj.away_score
             }
             
             # Создаем красивое уведомление о сигнале
@@ -600,8 +602,30 @@ class BetBogSystem:
     async def _display_beautiful_signal_notification(self, signal_data: Dict[str, Any], match_data: Dict[str, Any]):
         """Отправить красивое уведомление о сигнале в Telegram"""
         try:
+            # Проверяем время сигнала - ограничение только для стратегий тоталов
+            trigger_minute = signal_data.get('trigger_minute', 0)
+            strategy_name = signal_data.get('strategy_name', '')
+            
+            # Для стратегий тоталов: только за 10 минут до матча или до 20 минуты
+            if strategy_name in ['under_2_5_goals', 'over_2_5_goals']:
+                if trigger_minute > 20:
+                    return  # Не отправляем сигналы тоталов после 20 минуты
+            
             confidence = signal_data.get('confidence', 0)
             confidence_emoji = "🔥" if confidence > 0.8 else "⚡" if confidence > 0.6 else "📊"
+            
+            # Русские названия стратегий
+            strategy_names_ru = {
+                'under_2_5_goals': 'Тотал меньше 2.5 голов',
+                'over_2_5_goals': 'Тотал больше 2.5 голов',
+                'btts_yes': 'Обе команды забьют ДА',
+                'btts_no': 'Обе команды забьют НЕТ',
+                'home_win': 'Победа хозяев',
+                'away_win': 'Победа гостей',
+                'draw': 'Ничья',
+                'next_goal_home': 'Следующий гол - хозяева',
+                'next_goal_away': 'Следующий гол - гости'
+            }
             
             strategy_emojis = {
                 'under_2_5_goals': '🎯',
@@ -615,19 +639,26 @@ class BetBogSystem:
                 'next_goal_away': '🏃‍♀️'
             }
             
-            strategy_emoji = strategy_emojis.get(signal_data.get('strategy_name', ''), '🎲')
+            strategy_name = signal_data.get('strategy_name', '')
+            strategy_ru = strategy_names_ru.get(strategy_name, strategy_name)
+            strategy_emoji = strategy_emojis.get(strategy_name, '🎲')
+            
+            # Получаем текущий счет (если доступен)
+            home_score = match_data.get('home_score', 0)
+            away_score = match_data.get('away_score', 0)
+            score_text = f"{home_score}:{away_score}"
             
             # Форматирование для Telegram
             telegram_message = f"""{confidence_emoji} <b>НОВЫЙ СИГНАЛ!</b> {strategy_emoji}
 
-🎯 <b>Стратегия:</b> {signal_data.get('strategy_name', 'N/A')}
-📈 <b>Тип:</b> {signal_data.get('signal_type', 'N/A')}
+⚽ <b>{match_data.get('home_team', 'N/A')} vs {match_data.get('away_team', 'N/A')}</b>
+🏆 <b>{match_data.get('league', 'N/A')}</b>
+📊 <b>Счёт:</b> {score_text} | <b>Минута:</b> {trigger_minute}'
+
+🎯 <b>Стратегия:</b> {strategy_ru}
 🔥 <b>Уверенность:</b> {confidence:.1%}
-⚽ <b>Матч:</b> {match_data.get('home_team', 'N/A')} vs {match_data.get('away_team', 'N/A')}
-🏆 <b>Лига:</b> {match_data.get('league', 'N/A')}
-⏰ <b>Минута:</b> {signal_data.get('trigger_minute', 'N/A')}'
 💡 <b>Прогноз:</b> {signal_data.get('prediction', 'N/A')}
-📊 <b>Коэффициент:</b> {signal_data.get('recommended_odds', 'N/A')}
+📈 <b>Коэффициент:</b> {signal_data.get('recommended_odds', 'N/A')}
 
 📝 <b>Обоснование:</b>
 {signal_data.get('reasoning', 'Данные анализа недоступны')}"""
