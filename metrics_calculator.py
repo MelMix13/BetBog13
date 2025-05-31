@@ -42,6 +42,22 @@ class MatchMetrics:
     goals_home: int = 0
     goals_away: int = 0
     
+    # Производные метрики для стратегий
+    attacking_balance: float = 0.0  # Баланс атак между командами
+    defensive_pressure: float = 0.0  # Давление на оборону
+    match_tempo: float = 0.0  # Темп игры
+    goal_expectancy: float = 0.0  # Ожидание голов
+    dominance_home: float = 0.0  # Доминирование хозяев
+    dominance_away: float = 0.0  # Доминирование гостей
+    conversion_rate_home: float = 0.0  # Реализация хозяев
+    conversion_rate_away: float = 0.0  # Реализация гостей
+    defensive_stability_home: float = 0.0  # Стабильность обороны хозяев
+    defensive_stability_away: float = 0.0  # Стабильность обороны гостей
+    attacking_intensity: float = 0.0  # Интенсивность атак
+    pressure_zones: float = 0.0  # Зоны давления
+    counter_attack_potential_home: float = 0.0  # Потенциал контратак хозяев
+    counter_attack_potential_away: float = 0.0  # Потенциал контратак гостей
+    
     def to_dict(self) -> Dict[str, float]:
         return {
             'dxg_home': self.dxg_home,
@@ -380,3 +396,52 @@ class MetricsCalculator:
         changes['gradient_change'] = max(gradient_change_home, gradient_change_away) > thresholds.get('gradient_change', 0.2)
         
         return changes
+    
+    def calculate_derived_metrics(self, metrics: MatchMetrics, match_data: Dict[str, Any], minute: int) -> MatchMetrics:
+        """Рассчитать производные метрики для стратегий"""
+        
+        # Баланс атак между командами (0.5 = равенство)
+        total_attacks = metrics.attacks_home + metrics.attacks_away
+        if total_attacks > 0:
+            metrics.attacking_balance = abs(0.5 - (metrics.attacks_home / total_attacks))
+        
+        # Давление на оборону (комбинация атак, ударов, опасных моментов)
+        def_pressure_home = (metrics.attacks_home * 0.4 + metrics.shots_home * 0.4 + metrics.dangerous_home * 0.2)
+        def_pressure_away = (metrics.attacks_away * 0.4 + metrics.shots_away * 0.4 + metrics.dangerous_away * 0.2)
+        metrics.defensive_pressure = max(def_pressure_home, def_pressure_away) / max(1, minute / 10)
+        
+        # Темп игры (активность за минуту)
+        metrics.match_tempo = (total_attacks + metrics.shots_home + metrics.shots_away + metrics.corners_home + metrics.corners_away) / max(1, minute)
+        
+        # Ожидание голов (на основе dxG и текущих показателей)
+        metrics.goal_expectancy = (metrics.dxg_home + metrics.dxg_away) + (metrics.dangerous_home + metrics.dangerous_away) * 0.1
+        
+        # Доминирование команд
+        total_stats_home = metrics.attacks_home + metrics.shots_home + metrics.dangerous_home + metrics.corners_home
+        total_stats_away = metrics.attacks_away + metrics.shots_away + metrics.dangerous_away + metrics.corners_away
+        total_stats = total_stats_home + total_stats_away
+        
+        if total_stats > 0:
+            metrics.dominance_home = total_stats_home / total_stats
+            metrics.dominance_away = total_stats_away / total_stats
+        
+        # Реализация (голы к ударам)
+        metrics.conversion_rate_home = metrics.goals_home / max(1, metrics.shots_home)
+        metrics.conversion_rate_away = metrics.goals_away / max(1, metrics.shots_away)
+        
+        # Стабильность обороны (обратная к пропущенным опасным моментам)
+        metrics.defensive_stability_home = max(0, 1.0 - (metrics.dangerous_away / max(1, minute / 10)))
+        metrics.defensive_stability_away = max(0, 1.0 - (metrics.dangerous_home / max(1, minute / 10)))
+        
+        # Интенсивность атак (атаки за единицу времени)
+        metrics.attacking_intensity = total_attacks / max(1, minute / 15)
+        
+        # Зоны давления (концентрация активности)
+        possession_factor = abs(metrics.possession_home - 50) / 50
+        metrics.pressure_zones = possession_factor * metrics.attacking_intensity
+        
+        # Потенциал контратак (momentum + низкий possession)
+        metrics.counter_attack_potential_home = metrics.momentum_home * (1 - metrics.possession_home / 100)
+        metrics.counter_attack_potential_away = metrics.momentum_away * (1 - metrics.possession_away / 100)
+        
+        return metrics

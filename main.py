@@ -13,7 +13,7 @@ from models import Match, Signal, StrategyConfig, MatchMetrics, SystemLog
 from sqlalchemy import select
 from api_client import APIClient
 from metrics_calculator import MetricsCalculator, MatchMetrics
-from strategies import BettingStrategies, SignalResult
+from advanced_strategies import AdvancedFootballStrategies, SignalResult
 from simple_optimizer import SimpleOptimizer
 from simple_menu_bot import SimpleTelegramMenuBot
 from match_monitor import MatchMonitor
@@ -33,7 +33,7 @@ class BetBogSystem:
         # Core components
         self.api_client: Optional[APIClient] = None
         self.metrics_calculator = MetricsCalculator()
-        self.strategies = BettingStrategies(self.config.get_default_thresholds())
+        self.strategies = AdvancedFootballStrategies(self.config.get_default_thresholds())
         self.ml_optimizer = SimpleOptimizer()
         # self.telegram_bot = SimpleTelegramMenuBot(self.config)  # Отключен - используется отдельный Menu Bot
         self.telegram_bot = None
