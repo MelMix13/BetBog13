@@ -315,33 +315,53 @@ class TelegramMenuBot:
         else:
             message = "🎯 <b>Активные стратегии</b>\n\n"
             
-            for strategy in strategies:
-                status_emoji = "🟢"  # Все стратегии активны по умолчанию
-                strategy_name = strategy['strategy_name']
-                total_signals = strategy.get('total_signals', 0)
-                win_rate = strategy.get('win_rate', 0)
-                
-                # Форматируем название стратегии
-                display_name = self.format_strategy_name(strategy_name)
-                message += f"{status_emoji} <b>{display_name}</b>\n"
-                message += f"   📊 Сигналов: {total_signals}\n"
-                message += f"   🎯 Win Rate: {win_rate:.1f}%\n"
-                
-                # Показываем пороги если они есть
-                if strategy.get('thresholds'):
-                    try:
-                        thresholds = json.loads(strategy['thresholds']) if isinstance(strategy['thresholds'], str) else strategy['thresholds']
-                        if thresholds:
-                            message += "   ⚙️ Пороги: "
-                            threshold_parts = []
-                            for key, value in thresholds.items():
-                                threshold_parts.append(f"{key}={value}")
-                            message += ", ".join(threshold_parts[:3])  # Показываем первые 3
-                            message += "\n"
-                    except:
-                        pass
-                        
-                message += "\n"
+            # Группируем стратегии по логике
+            strategy_groups = {
+                "results": ["home_win", "draw", "away_win"],
+                "totals": ["over_2_5_goals", "under_2_5_goals"],
+                "btts": ["btts_yes", "btts_no"],
+                "next_goal": ["next_goal_home", "next_goal_away"]
+            }
+            
+            # Создаем словарь для быстрого поиска
+            strategies_dict = {s['strategy_name']: s for s in strategies}
+            
+            # Отображаем по группам
+            message += "🏆 <b>Исходы матча:</b>\n"
+            for strategy_name in strategy_groups["results"]:
+                if strategy_name in strategies_dict:
+                    strategy = strategies_dict[strategy_name]
+                    display_name = self.format_strategy_name(strategy_name)
+                    win_rate = strategy.get('win_rate', 0)
+                    total_signals = strategy.get('total_signals', 0)
+                    message += f"🟢 {display_name} | 🎯 {win_rate:.1f}% | 📊 {total_signals}\n"
+            
+            message += "\n⚽ <b>Тоталы голов:</b>\n"
+            for strategy_name in strategy_groups["totals"]:
+                if strategy_name in strategies_dict:
+                    strategy = strategies_dict[strategy_name]
+                    display_name = self.format_strategy_name(strategy_name)
+                    win_rate = strategy.get('win_rate', 0)
+                    total_signals = strategy.get('total_signals', 0)
+                    message += f"🟢 {display_name} | 🎯 {win_rate:.1f}% | 📊 {total_signals}\n"
+            
+            message += "\n🥅 <b>Обе забьют:</b>\n"
+            for strategy_name in strategy_groups["btts"]:
+                if strategy_name in strategies_dict:
+                    strategy = strategies_dict[strategy_name]
+                    display_name = self.format_strategy_name(strategy_name)
+                    win_rate = strategy.get('win_rate', 0)
+                    total_signals = strategy.get('total_signals', 0)
+                    message += f"🟢 {display_name} | 🎯 {win_rate:.1f}% | 📊 {total_signals}\n"
+            
+            message += "\n🎯 <b>Следующий гол:</b>\n"
+            for strategy_name in strategy_groups["next_goal"]:
+                if strategy_name in strategies_dict:
+                    strategy = strategies_dict[strategy_name]
+                    display_name = self.format_strategy_name(strategy_name)
+                    win_rate = strategy.get('win_rate', 0)
+                    total_signals = strategy.get('total_signals', 0)
+                    message += f"🟢 {display_name} | 🎯 {win_rate:.1f}% | 📊 {total_signals}\n"
 
         # Редактируем существующее сообщение если есть message_id
         if chat_id in self.user_messages:
