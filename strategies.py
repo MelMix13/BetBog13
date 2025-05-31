@@ -27,12 +27,7 @@ class BettingStrategies:
         self.strategies = {
             "over_2_5_goals": self.analyze_over_2_5_goals,
             "under_2_5_goals": self.analyze_under_2_5_goals,
-            "btts_yes": self.analyze_btts_yes,
-            "btts_no": self.analyze_btts_no,
-            "home_win": self.analyze_home_win,
-            "away_win": self.analyze_away_win,
-            "draw": self.analyze_draw,
-            "next_goal_home": self.analyze_next_goal_home,
+            "momentum_shift": self.analyze_momentum_shift,
             "next_goal_away": self.analyze_next_goal_away
         }
     
@@ -441,6 +436,62 @@ class BettingStrategies:
                         "chaos_level": chaos_level
                     },
                     recommended_odds=self._calculate_recommended_odds(signal_type, final_confidence)
+                )
+        
+        return None
+
+    def analyze_next_goal_away(self, 
+                             metrics: MatchMetrics, 
+                             match_data: Dict[str, Any], 
+                             minute: int) -> Optional[SignalResult]:
+        """Analyze away team next goal prediction"""
+        
+        config = self.config.get("next_goal_away", {})
+        threshold = config.get("threshold", 0.7)
+        min_confidence = config.get("min_confidence", 0.65)
+        
+        # Analyze away team momentum and attacking metrics
+        away_momentum = metrics.momentum_away
+        away_efficiency = metrics.shots_per_attack_away
+        momentum_diff = metrics.momentum_away - metrics.momentum_home
+        
+        confidence = 0.0
+        
+        # Strong away momentum suggests next goal
+        if away_momentum > 0.3 and momentum_diff > 0.15:
+            confidence += 0.4
+        
+        # High away efficiency
+        if away_efficiency > 0.3:
+            confidence += 0.3
+        
+        # Away pressure indicators
+        if metrics.attacks_away > metrics.attacks_home * 1.2:
+            confidence += 0.2
+            
+        if metrics.shots_away > metrics.shots_home:
+            confidence += 0.1
+        
+        if confidence >= threshold:
+            time_factor = self._get_time_confidence_factor(minute)
+            final_confidence = confidence * time_factor
+            
+            if final_confidence >= min_confidence:
+                return SignalResult(
+                    strategy_name="next_goal_away",
+                    signal_type="next_goal_away",
+                    confidence=round(final_confidence, 3),
+                    prediction="Next Goal: Away Team",
+                    threshold_used=threshold,
+                    reasoning=f"Away momentum: {away_momentum:.2f}, efficiency: {away_efficiency:.2f}",
+                    trigger_metrics={
+                        "away_momentum": away_momentum,
+                        "away_efficiency": away_efficiency,
+                        "momentum_diff": momentum_diff,
+                        "minute": minute
+                    },
+                    recommended_odds=self._calculate_recommended_odds("next_goal_away", final_confidence),
+                    stake_multiplier=min(1.5, final_confidence + 0.2)
                 )
         
         return None
