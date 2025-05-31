@@ -208,7 +208,7 @@ class FootballStrategies:
         return None
 
     async def analyze_under_2_5_goals(self, metrics: MatchMetrics, match_data: Dict[str, Any], minute: int) -> Optional[SignalResult]:
-        """Тотал меньше 2.5 голов - анализ разности между 1-м и 40-м тиком"""
+        """Тотал меньше 2.5 голов - анализ разности между 0-м и 30-м тиком"""
         config = self.config.get("under_2_5_goals", {})
         
         # Получаем историю тиков для анализа разности
@@ -216,35 +216,41 @@ class FootballStrategies:
         if not match_id:
             return None
         
-        # Получаем первый и 40-й тик для анализа
+        # Получаем нулевой и 30-й тик для анализа
         try:
             from main import db_session
             if db_session is None:
                 return None
-                
-            # Получаем первый тик (самый ранний)
-            first_tick = db_session.query(MatchMetrics)\
-                .filter(MatchMetrics.match_id == match_id)\
-                .order_by(MatchMetrics.created_at.asc())\
-                .first()
             
-            # Получаем 40-й тик или близкий к нему
-            fortieth_tick = db_session.query(MatchMetrics)\
+            # Получаем общее количество тиков
+            total_ticks = db_session.query(MatchMetrics)\
                 .filter(MatchMetrics.match_id == match_id)\
-                .order_by(MatchMetrics.created_at.asc())\
-                .offset(39)\
-                .first()
+                .count()
             
-            # Если нет достаточно тиков, используем текущие метрики как 40-й тик
-            if not first_tick:
+            # Ждем накопления минимум 30 тиков
+            if total_ticks < 30:
                 return None
-            if not fortieth_tick:
-                fortieth_tick = metrics
+                
+            # Получаем нулевой тик (самый первый)
+            zero_tick = db_session.query(MatchMetrics)\
+                .filter(MatchMetrics.match_id == match_id)\
+                .order_by(MatchMetrics.created_at.asc())\
+                .first()
+            
+            # Получаем 30-й тик
+            thirtieth_tick = db_session.query(MatchMetrics)\
+                .filter(MatchMetrics.match_id == match_id)\
+                .order_by(MatchMetrics.created_at.asc())\
+                .offset(29)\
+                .first()
+            
+            # Проверяем наличие необходимых тиков
+            if not zero_tick or not thirtieth_tick:
+                return None
                 
         except Exception as e:
-            # Fallback к текущим метрикам
-            first_tick = metrics
-            fortieth_tick = metrics
+            self.logger.error(f"Ошибка получения тиков для Under 2.5: {e}")
+            return None
         
         # Получаем названия команд
         home_team = match_data.get('home_team', '')
@@ -257,21 +263,21 @@ class FootballStrategies:
             self.logger.warning(f"Ошибка исторического анализа: {e}")
             historical_prediction = {"status": "error"}
         
-        # Рассчитываем разности метрик между 1-м и 40-м тиком
-        delta_dxg_home = fortieth_tick.dxg_home - first_tick.dxg_home
-        delta_dxg_away = fortieth_tick.dxg_away - first_tick.dxg_away
+        # Рассчитываем разности метрик между 0-м и 30-м тиком
+        delta_dxg_home = thirtieth_tick.dxg_home - zero_tick.dxg_home
+        delta_dxg_away = thirtieth_tick.dxg_away - zero_tick.dxg_away
         delta_dxg_combined = delta_dxg_home + delta_dxg_away
         
-        delta_gradient_home = fortieth_tick.gradient_home - first_tick.gradient_home
-        delta_gradient_away = fortieth_tick.gradient_away - first_tick.gradient_away
+        delta_gradient_home = thirtieth_tick.gradient_home - zero_tick.gradient_home
+        delta_gradient_away = thirtieth_tick.gradient_away - zero_tick.gradient_away
         
-        delta_momentum_home = fortieth_tick.momentum_home - first_tick.momentum_home
-        delta_momentum_away = fortieth_tick.momentum_away - first_tick.momentum_away
+        delta_momentum_home = thirtieth_tick.momentum_home - zero_tick.momentum_home
+        delta_momentum_away = thirtieth_tick.momentum_away - zero_tick.momentum_away
         
-        delta_stability_home = fortieth_tick.stability_home - first_tick.stability_home
-        delta_stability_away = fortieth_tick.stability_away - first_tick.stability_away
+        delta_stability_home = thirtieth_tick.stability_home - zero_tick.stability_home
+        delta_stability_away = thirtieth_tick.stability_away - zero_tick.stability_away
         
-        delta_wave_amplitude = fortieth_tick.wave_amplitude - first_tick.wave_amplitude
+        delta_wave_amplitude = thirtieth_tick.wave_amplitude - zero_tick.wave_amplitude
         
         # Текущие метрики для дополнительной проверки
         attacks_total = match_data.get('attacks_home', 0) + match_data.get('attacks_away', 0)
@@ -376,8 +382,8 @@ class FootballStrategies:
                 
             final_confidence = min(0.85, base_confidence * historical_factor)
             
-            # Формируем обоснование на основе анализа 40 тиков
-            reasoning = "Анализ 40 тиков: " + ", ".join(reasoning_parts) if reasoning_parts else "Стабильная оборонительная игра"
+            # Формируем обоснование на основе анализа 30 тиков
+            reasoning = "Анализ 30 тиков (0→30): " + ", ".join(reasoning_parts) if reasoning_parts else "Стабильная оборонительная игра"
                 
             return SignalResult(
                 strategy_name="under_2_5_goals",
