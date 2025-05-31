@@ -3,6 +3,7 @@ import asyncio
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 import json
+import time
 from config import Config
 from logger import BetBogLogger
 
@@ -11,6 +12,8 @@ class APIClient:
         self.config = config
         self.logger = BetBogLogger("API")
         self.session: Optional[aiohttp.ClientSession] = None
+        self.last_request_time = 0
+        self.rate_limit_delay = 3.0  # 3 seconds between requests to avoid 429 errors
         
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(
@@ -27,13 +30,14 @@ class APIClient:
             await self.session.close()
     
     async def _make_request(self, endpoint: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Make API request with error handling"""
-        if not self.session:
-            raise RuntimeError("API client not initialized. Use async context manager.")
-            
+        """Make API request with error handling and automatic reconnection"""
         url = f"{self.config.BASE_URL}{endpoint}"
         params['token'] = self.config.API_TOKEN
         params['locale'] = 'ru'
+        
+        # Проверяем и переподключаемся если нужно
+        if not self.session or self.session.closed:
+            await self._reconnect()
         
         try:
             self.logger.info(f"API Request: {endpoint}")
@@ -55,8 +59,40 @@ class APIClient:
             self.logger.error("API Timeout")
             return {"success": 0, "results": [], "error": "Timeout"}
         except Exception as e:
-            self.logger.error(f"API Exception: {str(e)}")
-            return {"success": 0, "results": [], "error": str(e)}
+            error_str = str(e)
+            if "closed" in error_str.lower() or "session" in error_str.lower():
+                self.logger.warning(f"Session closed, attempting reconnection: {error_str}")
+                try:
+                    await self._reconnect()
+                    # Retry request after reconnection
+                    async with self.session.get(url, params=params) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            if data.get("success") == 1:
+                                self.logger.success(f"API Success after reconnect: {len(data.get('results', []))} items")
+                                return data
+                except Exception as retry_e:
+                    self.logger.error(f"Retry failed: {str(retry_e)}")
+            
+            self.logger.error(f"API Exception: {error_str}")
+            return {"success": 0, "results": [], "error": error_str}
+    
+    async def _reconnect(self):
+        """Переподключение к API"""
+        try:
+            if self.session and not self.session.closed:
+                await self.session.close()
+        except:
+            pass
+        
+        self.session = aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=30),
+            headers={
+                'User-Agent': 'BetBog-Monitor/1.0',
+                'Accept': 'application/json'
+            }
+        )
+        self.logger.info("API client reconnected")
     
     async def get_live_matches(self, sport_id: int = 1, skip_esports: bool = True) -> List[Dict[str, Any]]:
         """Get live football matches"""

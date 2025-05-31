@@ -298,6 +298,14 @@ class BetBogSystem:
                         if trend_data['current_average'] > 0:
                             self.logger.info(f"Тик анализ {match_id}: {metric_name} = {trend_data['current_average']:.1f}, тренд: {trend_data['trend']}")
                 
+                # Валидация данных перед анализом стратегий
+                if not self._validate_match_data(parsed_match, stats, minute):
+                    self.logger.warning(f"Недостоверные данные для матча {match_id}, пропускаем анализ сигналов")
+                    # Store metrics anyway for monitoring
+                    await self.match_monitor.store_metrics(session, match_obj.id, current_metrics, minute, stats)
+                    await session.commit()
+                    return
+                
                 # Store metrics
                 await self.match_monitor.store_metrics(session, match_obj.id, current_metrics, minute, stats)
                 
@@ -976,6 +984,44 @@ class BetBogSystem:
         result['avg_goals_home' if is_home else 'avg_goals_away'] = avg_total_goals
         
         return result
+
+    def _validate_match_data(self, parsed_match: Dict[str, Any], stats: Dict[str, Any], minute: int) -> bool:
+        """Валидация данных матча перед анализом стратегий"""
+        
+        # Проверяем базовые данные матча
+        if not parsed_match.get('home_team') or not parsed_match.get('away_team'):
+            return False
+        
+        # Проверяем, что минута адекватная
+        if minute < 0 or minute > 130:
+            return False
+        
+        # Проверяем наличие хотя бы минимальной активности для матчей после 10 минуты
+        if minute > 10:
+            total_attacks = stats.get('attacks_home', 0) + stats.get('attacks_away', 0)
+            total_shots = stats.get('shots_home', 0) + stats.get('shots_away', 0)
+            
+            # Для живого матча после 10 минут должна быть хоть какая-то активность
+            if total_attacks == 0 and total_shots == 0:
+                self.logger.warning(f"Нулевая активность в матче {parsed_match.get('home_team')} vs {parsed_match.get('away_team')} на {minute} минуте")
+                return False
+        
+        # Проверяем, что данные не все нулевые (API ошибка)
+        key_stats = [
+            stats.get('attacks_home', 0),
+            stats.get('attacks_away', 0),
+            stats.get('shots_home', 0),
+            stats.get('shots_away', 0),
+            stats.get('corners_home', 0),
+            stats.get('corners_away', 0)
+        ]
+        
+        # Для матчей после 15 минут хотя бы один показатель должен быть > 0
+        if minute > 15 and all(stat == 0 for stat in key_stats):
+            self.logger.warning(f"Все ключевые статистики нулевые для матча на {minute} минуте")
+            return False
+        
+        return True
 
     def _analyze_team_totals(self, matches: List, team_name: str, is_home: bool) -> Dict[str, Any]:
         """Анализ статистики тоталов для команды"""
