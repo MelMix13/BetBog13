@@ -89,13 +89,13 @@ class TeamStatsCache:
             self.logger.error(f"Ошибка сохранения кэша: {str(e)}")
     
     async def update_teams_from_live_matches(self):
-        """Обновление статистики команд из текущих live матчей через анализ завершенных матчей"""
+        """Обновление статистики команд из текущих live матчей через анализ последних 10 матчей"""
         if not self.api_client:
             self.logger.error("API клиент не инициализирован")
             return
             
         try:
-            self.logger.header("Получение команд из live матчей для анализа завершенных игр")
+            self.logger.header("Получение команд из live матчей для анализа последних матчей")
             
             # Получаем все live матчи только для извлечения списка команд
             async with self.api_client:
@@ -117,27 +117,27 @@ class TeamStatsCache:
             
             self.logger.info(f"Найдено {len(unique_teams)} уникальных команд для анализа")
             
-            # Анализируем завершенные матчи для каждой команды
+            # Анализируем последние матчи для каждой команды
             updated_count = 0
             for team_name in unique_teams:
                 try:
-                    await self.update_team_stats_from_finished_matches(team_name)
+                    await self.update_team_stats_from_recent_matches(team_name)
                     updated_count += 1
                     
                     # Пауза между запросами чтобы не перегружать API
-                    await asyncio.sleep(0.3)
+                    await asyncio.sleep(0.2)
                     
                 except Exception as e:
                     self.logger.error(f"Ошибка обновления статистики для {team_name}: {str(e)}")
                     
-            self.logger.success(f"Обновлена статистика для {updated_count} команд на основе завершенных матчей")
+            self.logger.success(f"Обновлена статистика для {updated_count} команд на основе последних матчей")
             await self.save_cache()
             
         except Exception as e:
             self.logger.error(f"Ошибка обновления команд: {str(e)}")
     
-    async def update_team_stats_from_finished_matches(self, team_name: str, days_back: int = 14):
-        """Обновление статистики команды на основе завершенных матчей"""
+    async def update_team_stats_from_recent_matches(self, team_name: str, max_matches: int = 10):
+        """Обновление статистики команды на основе последних 10 матчей"""
         try:
             # Проверяем, нужно ли обновлять (если данные свежие)
             if team_name in self.teams_stats:
@@ -145,38 +145,61 @@ class TeamStatsCache:
                 if datetime.now() - last_updated < timedelta(hours=6):
                     return  # Данные свежие, не обновляем
             
-            self.logger.info(f"Анализ завершенных матчей для команды: {team_name}")
+            self.logger.info(f"Поиск последних {max_matches} матчей для команды: {team_name}")
             
-            # Получаем завершенные матчи за последние дни
-            async with self.api_client:
-                finished_matches = await self.api_client.get_finished_matches(days_back=days_back)
-            
-            if not finished_matches:
-                self.logger.warning(f"Завершенные матчи не найдены")
-                return
-                
-            # Фильтруем матчи этой команды
+            # Собираем матчи команды из разных периодов пока не найдем достаточно
             team_matches = []
-            for match in finished_matches:
-                if isinstance(match, dict):
-                    home_team = match.get('home', {}).get('name', '')
-                    away_team = match.get('away', {}).get('name', '')
-                    if team_name == home_team or team_name == away_team:
-                        team_matches.append(match)
+            days_back = 7  # Начинаем с недели
+            max_days_back = 180  # Максимум 6 месяцев назад
+            
+            while len(team_matches) < max_matches and days_back <= max_days_back:
+                # Получаем завершенные матчи за период
+                async with self.api_client:
+                    finished_matches = await self.api_client.get_finished_matches(days_back=days_back)
+                
+                if not finished_matches:
+                    break
+                    
+                # Фильтруем матчи этой команды
+                for match in finished_matches:
+                    if isinstance(match, dict):
+                        home_team = match.get('home', {}).get('name', '')
+                        away_team = match.get('away', {}).get('name', '')
+                        if team_name == home_team or team_name == away_team:
+                            # Проверяем, что матч завершен
+                            if match.get('time_status') == '3':  # 3 = Finished
+                                # Избегаем дубликатов
+                                match_id = match.get('id', '')
+                                if not any(m.get('id') == match_id for m in team_matches):
+                                    team_matches.append(match)
+                                    
+                                    if len(team_matches) >= max_matches:
+                                        break
+                
+                # Увеличиваем период поиска
+                days_back += 7
             
             if not team_matches:
                 self.logger.warning(f"Завершенные матчи команды {team_name} не найдены")
                 return
+            
+            # Берем только последние max_matches матчей (сортируем по дате)
+            team_matches = sorted(team_matches, key=lambda x: x.get('time', 0), reverse=True)[:max_matches]
                 
             # Анализируем статистику
-            stats = await self.analyze_finished_team_matches(team_name, team_matches)
+            stats = await self.analyze_recent_team_matches(team_name, team_matches)
             
             # Сохраняем в кэш
             self.teams_stats[team_name] = stats
-            self.logger.success(f"Статистика обновлена для {team_name}: {stats.total_games} завершенных матчей")
+            self.logger.success(f"Статистика обновлена для {team_name}: {stats.total_games} последних матчей")
             
         except Exception as e:
             self.logger.error(f"Ошибка обновления статистики команды {team_name}: {str(e)}")
+
+    async def update_team_stats_from_finished_matches(self, team_name: str, days_back: int = 14):
+        """Обновление статистики команды на основе завершенных матчей (устаревший метод)"""
+        # Перенаправляем на новый метод
+        await self.update_team_stats_from_recent_matches(team_name, 10)
 
     async def update_team_stats(self, team_name: str, days_back: int = 30):
         """Обновление статистики конкретной команды (устаревший метод)"""
@@ -199,6 +222,87 @@ class TeamStatsCache:
                 # Проверяем, что матч завершен и есть итоговый счет
                 if match.get('time_status') != '3':  # 3 = Finished
                     continue
+                
+                # Получаем финальный счет
+                ss = match.get('ss', '')
+                if not ss:
+                    continue
+                    
+                try:
+                    home_goals, away_goals = map(int, ss.split('-'))
+                except:
+                    continue
+                
+                # Получаем статистику матча (если доступна)
+                match_stats = match.get('stats', {})
+                
+                if team_name == home_team:
+                    # Команда играла дома
+                    stats.home_games += 1
+                    home_stats['goals'].append(home_goals)
+                    
+                    # Добавляем статистику, если доступна
+                    if match_stats:
+                        home_stats['attacks'].append(match_stats.get('attacks_home', 0))
+                        home_stats['shots'].append(match_stats.get('shots_home', 0))
+                        home_stats['dangerous'].append(match_stats.get('dangerous_home', 0))
+                        home_stats['corners'].append(match_stats.get('corners_home', 0))
+                    
+                elif team_name == away_team:
+                    # Команда играла в гостях
+                    stats.away_games += 1
+                    away_stats['goals'].append(away_goals)
+                    
+                    # Добавляем статистику, если доступна
+                    if match_stats:
+                        away_stats['attacks'].append(match_stats.get('attacks_away', 0))
+                        away_stats['shots'].append(match_stats.get('shots_away', 0))
+                        away_stats['dangerous'].append(match_stats.get('dangerous_away', 0))
+                        away_stats['corners'].append(match_stats.get('corners_away', 0))
+                    
+            except Exception as e:
+                self.logger.debug(f"Ошибка анализа матча: {str(e)}")
+                continue
+        
+        # Рассчитываем средние значения
+        if stats.home_games > 0:
+            stats.home_avg_goals = sum(home_stats['goals']) / stats.home_games
+            if home_stats['attacks']:
+                stats.home_avg_attacks = sum(home_stats['attacks']) / len(home_stats['attacks'])
+            if home_stats['shots']:
+                stats.home_avg_shots = sum(home_stats['shots']) / len(home_stats['shots'])
+            if home_stats['dangerous']:
+                stats.home_avg_dangerous = sum(home_stats['dangerous']) / len(home_stats['dangerous'])
+            if home_stats['corners']:
+                stats.home_avg_corners = sum(home_stats['corners']) / len(home_stats['corners'])
+            
+        if stats.away_games > 0:
+            stats.away_avg_goals = sum(away_stats['goals']) / stats.away_games
+            if away_stats['attacks']:
+                stats.away_avg_attacks = sum(away_stats['attacks']) / len(away_stats['attacks'])
+            if away_stats['shots']:
+                stats.away_avg_shots = sum(away_stats['shots']) / len(away_stats['shots'])
+            if away_stats['dangerous']:
+                stats.away_avg_dangerous = sum(away_stats['dangerous']) / len(away_stats['dangerous'])
+            if away_stats['corners']:
+                stats.away_avg_corners = sum(away_stats['corners']) / len(away_stats['corners'])
+        
+        stats.total_games = stats.home_games + stats.away_games
+        
+        return stats
+
+    async def analyze_recent_team_matches(self, team_name: str, matches: List[Dict[str, Any]]) -> TeamStats:
+        """Анализ последних матчей команды для расчета средних показателей"""
+        stats = TeamStats(team_name=team_name, last_updated=datetime.now().isoformat())
+        
+        home_stats = {'goals': [], 'attacks': [], 'shots': [], 'dangerous': [], 'corners': []}
+        away_stats = {'goals': [], 'attacks': [], 'shots': [], 'dangerous': [], 'corners': []}
+        
+        for match in matches:
+            try:
+                # Определяем, играла ли команда дома или в гостях
+                home_team = match.get('home', {}).get('name', '')
+                away_team = match.get('away', {}).get('name', '')
                 
                 # Получаем финальный счет
                 ss = match.get('ss', '')
