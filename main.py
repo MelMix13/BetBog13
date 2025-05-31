@@ -242,15 +242,24 @@ class BetBogSystem:
             async with AsyncSessionLocal() as session:
                 match_obj = await self.match_monitor.get_or_create_match(session, parsed_match)
                 
-                # Get match statistics
-                if self.api_client:
-                    async with self.api_client:
-                        stats = await self.api_client.get_match_statistics(match_id)
-                else:
-                    stats = {}
-                
+                # Extract statistics from match data itself (avoid 404 errors)
+                stats = parsed_match.get('stats', {})
                 if not stats:
-                    return
+                    # Extract basic stats from match data if available
+                    stats = {
+                        'shots_home': parsed_match.get('shots_home', 0),
+                        'shots_away': parsed_match.get('shots_away', 0),
+                        'attacks_home': parsed_match.get('attacks_home', 0),
+                        'attacks_away': parsed_match.get('attacks_away', 0),
+                        'corners_home': parsed_match.get('corners_home', 0),
+                        'corners_away': parsed_match.get('corners_away', 0),
+                        'possession_home': parsed_match.get('possession_home', 50),
+                        'possession_away': parsed_match.get('possession_away', 50),
+                        'dangerous_home': parsed_match.get('dangerous_home', 0),
+                        'dangerous_away': parsed_match.get('dangerous_away', 0)
+                    }
+                
+                # Continue processing even with limited stats data
                 
                 # Calculate metrics
                 historical_stats = await self.match_monitor.get_historical_metrics(session, match_obj.id)

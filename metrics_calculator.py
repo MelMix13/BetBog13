@@ -21,6 +21,20 @@ class MatchMetrics:
     shots_per_attack_home: float
     shots_per_attack_away: float
     
+    # Raw statistics needed by strategies
+    attacks_home: int = 0
+    attacks_away: int = 0
+    shots_home: int = 0
+    shots_away: int = 0
+    corners_home: int = 0
+    corners_away: int = 0
+    possession_home: float = 50.0
+    possession_away: float = 50.0
+    dangerous_home: int = 0
+    dangerous_away: int = 0
+    goals_home: int = 0
+    goals_away: int = 0
+    
     def to_dict(self) -> Dict[str, float]:
         return {
             'dxg_home': self.dxg_home,
@@ -59,6 +73,8 @@ class MetricsCalculator:
         possession_away = current_stats.get('possession_away', 50.0)
         dangerous_attacks_home = current_stats.get('dangerous_attacks_home', 0)
         dangerous_attacks_away = current_stats.get('dangerous_attacks_away', 0)
+        corners_home = current_stats.get('corners_home', 0)
+        corners_away = current_stats.get('corners_away', 0)
         
         # Calculate derived metrics
         dxg_home, dxg_away = self._calculate_dxg(
@@ -100,7 +116,20 @@ class MetricsCalculator:
             stability_home=stability_home,
             stability_away=stability_away,
             shots_per_attack_home=shots_per_attack_home,
-            shots_per_attack_away=shots_per_attack_away
+            shots_per_attack_away=shots_per_attack_away,
+            # Include raw statistics for strategies
+            attacks_home=attacks_home,
+            attacks_away=attacks_away,
+            shots_home=shots_home,
+            shots_away=shots_away,
+            corners_home=corners_home,
+            corners_away=corners_away,
+            possession_home=possession_home,
+            possession_away=possession_away,
+            dangerous_home=dangerous_attacks_home,
+            dangerous_away=dangerous_attacks_away,
+            goals_home=stats.get('goals_home', 0),
+            goals_away=stats.get('goals_away', 0)
         )
     
     def _calculate_dxg(self, 
