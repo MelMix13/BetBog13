@@ -7,6 +7,7 @@ from datetime import datetime
 import math
 from metrics_calculator import MatchMetrics
 from logger import BetBogLogger
+from historical_analyzer import HistoricalAnalyzer
 
 @dataclass
 class SignalResult:
@@ -27,6 +28,8 @@ class FootballStrategies:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.logger = BetBogLogger("FOOTBALL_STRATEGIES")
+        from config import Config
+        self.historical_analyzer = HistoricalAnalyzer(Config())
         
         # Коэффициенты для каждого типа ставки (среднерыночные)
         self.default_odds = {
@@ -76,71 +79,145 @@ class FootballStrategies:
         
         return signals
 
-    def analyze_over_2_5_goals(self, metrics: MatchMetrics, match_data: Dict[str, Any], minute: int) -> Optional[SignalResult]:
-        """Тотал больше 2.5 голов - анализ атакующего потенциала"""
+    async def analyze_over_2_5_goals(self, metrics: MatchMetrics, match_data: Dict[str, Any], minute: int) -> Optional[SignalResult]:
+        """Тотал больше 2.5 голов - анализ с историей команд"""
         config = self.config.get("over_2_5_goals", {})
         
-        # Ключевые метрики
+        # Получаем названия команд
+        home_team = match_data.get('home_team', '')
+        away_team = match_data.get('away_team', '')
+        
+        # Проводим исторический анализ (асинхронно)
+        try:
+            historical_prediction = await self.historical_analyzer.analyze_match_totals_prediction(home_team, away_team)
+        except Exception as e:
+            self.logger.warning(f"Ошибка исторического анализа: {e}")
+            historical_prediction = {"status": "error"}
+        
+        # Текущие метрики матча
         dxg_combined = metrics.dxg_home + metrics.dxg_away
         attacks_total = match_data.get('attacks_home', 0) + match_data.get('attacks_away', 0)
         shots_total = match_data.get('shots_home', 0) + match_data.get('shots_away', 0)
         dangerous_total = match_data.get('dangerous_attacks_home', 0) + match_data.get('dangerous_attacks_away', 0)
         
-        # Фактор времени - ранние минуты важнее для тотала
+        # Фактор времени
         time_factor = max(0.6, 1.0 - (minute / 90) * 0.4)
         
-        # Усталость команд - меньше усталости = больше голов
+        # Усталость команд
         max_tiredness = max(metrics.tiredness_home, metrics.tiredness_away)
         avg_momentum = (metrics.momentum_home + metrics.momentum_away) / 2
         
-        # Проверяем условия (футбольная логика)
-        conditions = []
-        conditions.append(dxg_combined >= config.get("min_dxg_combined", 3.2))  # Высокие ожидаемые голы
-        conditions.append(attacks_total >= config.get("min_attacks_total", 25))  # Активная игра
-        conditions.append(shots_total >= config.get("min_shots_total", 14))     # Много ударов
-        conditions.append(max_tiredness <= config.get("max_tiredness_both", 0.6)) # Команды не устали
-        conditions.append(avg_momentum >= config.get("min_momentum_either", 0.65)) # Хороший моментум
-        conditions.append(dangerous_total >= 8)  # Много опасных атак
-        conditions.append(metrics.wave_amplitude >= config.get("min_wave_amplitude", 0.4)) # Динамичная игра
+        # Базовые условия игры
+        live_conditions = []
+        live_conditions.append(dxg_combined >= config.get("min_dxg_combined", 2.8))  
+        live_conditions.append(attacks_total >= config.get("min_attacks_total", 20))  
+        live_conditions.append(shots_total >= config.get("min_shots_total", 12))     
+        live_conditions.append(max_tiredness <= config.get("max_tiredness_both", 0.6))
+        live_conditions.append(avg_momentum >= config.get("min_momentum_either", 0.6))
+        live_conditions.append(dangerous_total >= 6)
+        live_conditions.append(metrics.wave_amplitude >= config.get("min_wave_amplitude", 0.35))
         
-        conditions_met = sum(conditions)
+        live_conditions_met = sum(live_conditions)
         
-        # Нужно минимум 5 из 7 условий
-        if conditions_met >= 5:
-            # Расчет confidence на основе футбольных факторов
-            base_confidence = (conditions_met / 7) * 0.85
+        # Анализ истории команд
+        historical_factor = 1.0
+        historical_confidence = 0.0
+        reasoning_parts = []
+        
+        if historical_prediction.get("status") == "success":
+            pred = historical_prediction.get("prediction", {})
+            hist_over_prob = pred.get("over_25_probability", 0.5)
+            hist_recommendation = pred.get("recommendation", "no_bet")
+            predicted_total = pred.get("predicted_total", 2.5)
             
-            # Бонусы за особо важные факторы
-            if dxg_combined >= 4.0:
+            # Учитываем историческую склонность к тоталам
+            if hist_recommendation == "over_2.5" and hist_over_prob > 0.6:
+                historical_factor = 1.2
+                historical_confidence = hist_over_prob
+                reasoning_parts.append(f"История: over 2.5 ({hist_over_prob:.1%})")
+            elif predicted_total > 2.7:
+                historical_factor = 1.1
+                historical_confidence = hist_over_prob
+                reasoning_parts.append(f"Прогноз: {predicted_total:.1f} голов")
+            
+            # Анализ домашнего фактора
+            home_analysis = historical_prediction.get("home_analysis", {})
+            away_analysis = historical_prediction.get("away_analysis", {})
+            
+            if home_analysis.get("status") == "success":
+                home_home_avg = home_analysis.get("home_away_analysis", {}).get("home_avg_total", 0)
+                if home_home_avg > 2.8:
+                    historical_factor += 0.1
+                    reasoning_parts.append(f"Хозяева дома: {home_home_avg:.1f}")
+            
+            if away_analysis.get("status") == "success":
+                away_away_avg = away_analysis.get("home_away_analysis", {}).get("away_avg_total", 0)
+                if away_away_avg > 2.6:
+                    historical_factor += 0.1
+                    reasoning_parts.append(f"Гости в выезде: {away_away_avg:.1f}")
+        
+        # Нужно минимум 4 из 7 условий + положительный исторический фактор
+        min_conditions = 4 if historical_factor > 1.0 else 5
+        
+        if live_conditions_met >= min_conditions:
+            # Базовая уверенность от текущей игры
+            base_confidence = (live_conditions_met / 7) * 0.75
+            
+            # Исторический бонус
+            if historical_confidence > 0:
+                base_confidence = (base_confidence * 0.7) + (historical_confidence * 0.3)
+            
+            # Бонусы за особые факторы
+            if dxg_combined >= 3.5:
                 base_confidence += 0.05
-            if shots_total >= 18:
+            if shots_total >= 16:
                 base_confidence += 0.03
-            if minute <= 30 and attacks_total >= 15:  # Ранняя активность
+            if minute <= 30 and attacks_total >= 18:
                 base_confidence += 0.04
                 
-            final_confidence = min(0.90, base_confidence * time_factor)
+            final_confidence = min(0.88, base_confidence * time_factor * historical_factor)
+            
+            # Формируем обоснование
+            live_reasoning = f"Текущая игра: dxG={dxg_combined:.2f}, атаки={attacks_total}, удары={shots_total}"
+            if reasoning_parts:
+                full_reasoning = live_reasoning + " | " + ", ".join(reasoning_parts)
+            else:
+                full_reasoning = live_reasoning
             
             return SignalResult(
                 strategy_name="over_2_5_goals",
                 signal_type="total_goals",
                 confidence=final_confidence,
                 prediction="over_2.5",
-                threshold_used=config.get("min_dxg_combined", 3.2),
-                reasoning=f"Высокая атакующая активность: dxG={dxg_combined:.2f}, атаки={attacks_total}, удары={shots_total}",
+                threshold_used=config.get("min_dxg_combined", 2.8),
+                reasoning=full_reasoning,
                 trigger_metrics={
                     "dxg_combined": dxg_combined, 
                     "attacks_total": float(attacks_total), 
                     "shots_total": float(shots_total),
-                    "momentum_avg": avg_momentum
+                    "momentum_avg": avg_momentum,
+                    "historical_factor": historical_factor
                 },
                 recommended_odds=self.default_odds["over_2_5_goals"]
             )
         return None
 
-    def analyze_under_2_5_goals(self, metrics: MatchMetrics, match_data: Dict[str, Any], minute: int) -> Optional[SignalResult]:
-        """Тотал меньше 2.5 голов - анализ оборонительной игры"""
+    async def analyze_under_2_5_goals(self, metrics: MatchMetrics, match_data: Dict[str, Any], minute: int) -> Optional[SignalResult]:
+        """Тотал меньше 2.5 голов - анализ с историей команд"""
         config = self.config.get("under_2_5_goals", {})
         
+        # Получаем названия команд
+        home_team = match_data.get('home_team', '')
+        away_team = match_data.get('away_team', '')
+        
+        # Проводим исторический анализ
+        try:
+            historical_prediction = await self.historical_analyzer.analyze_match_totals_prediction(home_team, away_team)
+        except Exception as e:
+            self.logger.warning(f"Ошибка исторического анализа: {e}")
+            historical_prediction = {"status": "error"}
+        
+        # Текущие метрики матча
         dxg_combined = metrics.dxg_home + metrics.dxg_away
         attacks_total = match_data.get('attacks_home', 0) + match_data.get('attacks_away', 0)
         shots_total = match_data.get('shots_home', 0) + match_data.get('shots_away', 0)
@@ -150,39 +227,97 @@ class FootballStrategies:
         shots_per_attack = (metrics.shots_per_attack_home + metrics.shots_per_attack_away) / 2
         
         # Низкое качество атак
-        low_danger = match_data.get('dangerous_attacks_home', 0) + match_data.get('dangerous_attacks_away', 0) <= 6
+        low_danger = match_data.get('dangerous_attacks_home', 0) + match_data.get('dangerous_attacks_away', 0) <= 4
         
-        conditions = []
-        conditions.append(dxg_combined <= config.get("max_dxg_combined", 1.6))
-        conditions.append(attacks_total <= config.get("max_attacks_total", 15))
-        conditions.append(stability_avg >= config.get("min_stability_both", 0.75))
-        conditions.append(shots_per_attack <= config.get("max_shots_per_attack", 0.6))
-        conditions.append(metrics.wave_amplitude <= config.get("max_wave_amplitude", 0.3))
-        conditions.append(low_danger)
-        conditions.append(shots_total <= 10)  # Мало ударов
+        # Базовые условия игры
+        live_conditions = []
+        live_conditions.append(dxg_combined <= config.get("max_dxg_combined", 1.8))
+        live_conditions.append(attacks_total <= config.get("max_attacks_total", 18))
+        live_conditions.append(stability_avg >= config.get("min_stability_both", 0.7))
+        live_conditions.append(shots_per_attack <= config.get("max_shots_per_attack", 0.65))
+        live_conditions.append(metrics.wave_amplitude <= config.get("max_wave_amplitude", 0.35))
+        live_conditions.append(low_danger)
+        live_conditions.append(shots_total <= 12)
         
-        conditions_met = sum(conditions)
+        live_conditions_met = sum(live_conditions)
         
-        if conditions_met >= 5:
-            confidence = (conditions_met / 7) * 0.80
+        # Анализ истории команд для under
+        historical_factor = 1.0
+        historical_confidence = 0.0
+        reasoning_parts = []
+        
+        if historical_prediction.get("status") == "success":
+            pred = historical_prediction.get("prediction", {})
+            hist_under_prob = pred.get("under_25_probability", 0.5)
+            hist_recommendation = pred.get("recommendation", "no_bet")
+            predicted_total = pred.get("predicted_total", 2.5)
+            
+            # Учитываем историческую склонность к low scoring
+            if hist_recommendation == "under_2.5" and hist_under_prob > 0.6:
+                historical_factor = 1.2
+                historical_confidence = hist_under_prob
+                reasoning_parts.append(f"История: under 2.5 ({hist_under_prob:.1%})")
+            elif predicted_total < 2.3:
+                historical_factor = 1.1
+                historical_confidence = hist_under_prob
+                reasoning_parts.append(f"Прогноз: {predicted_total:.1f} голов")
+            
+            # Анализ оборонительных показателей команд
+            home_analysis = historical_prediction.get("home_analysis", {})
+            away_analysis = historical_prediction.get("away_analysis", {})
+            
+            if home_analysis.get("status") == "success":
+                home_home_avg = home_analysis.get("home_away_analysis", {}).get("home_avg_total", 0)
+                if home_home_avg < 2.2:
+                    historical_factor += 0.1
+                    reasoning_parts.append(f"Хозяева дома: {home_home_avg:.1f}")
+            
+            if away_analysis.get("status") == "success":
+                away_away_avg = away_analysis.get("home_away_analysis", {}).get("away_avg_total", 0)
+                if away_away_avg < 2.4:
+                    historical_factor += 0.1
+                    reasoning_parts.append(f"Гости в выезде: {away_away_avg:.1f}")
+        
+        # Нужно минимум 4 из 7 условий + положительный исторический фактор для under
+        min_conditions = 4 if historical_factor > 1.0 else 5
+        
+        if live_conditions_met >= min_conditions:
+            # Базовая уверенность от текущей игры
+            base_confidence = (live_conditions_met / 7) * 0.75
+            
+            # Исторический бонус
+            if historical_confidence > 0:
+                base_confidence = (base_confidence * 0.7) + (historical_confidence * 0.3)
             
             # Бонусы за оборонительную игру
             if stability_avg >= 0.85:
-                confidence += 0.05
-            if dxg_combined <= 1.2:
-                confidence += 0.04
+                base_confidence += 0.05
+            if dxg_combined <= 1.4:
+                base_confidence += 0.04
+            if shots_per_attack <= 0.5:
+                base_confidence += 0.03
+                
+            final_confidence = min(0.85, base_confidence * historical_factor)
+            
+            # Формируем обоснование
+            live_reasoning = f"Оборонительная игра: dxG={dxg_combined:.2f}, стабильность={stability_avg:.2f}, удары/атака={shots_per_attack:.2f}"
+            if reasoning_parts:
+                full_reasoning = live_reasoning + " | " + ", ".join(reasoning_parts)
+            else:
+                full_reasoning = live_reasoning
                 
             return SignalResult(
                 strategy_name="under_2_5_goals",
                 signal_type="total_goals",
-                confidence=min(0.85, confidence),
+                confidence=final_confidence,
                 prediction="under_2.5",
-                threshold_used=config.get("max_dxg_combined", 1.6),
-                reasoning=f"Оборонительная игра: dxG={dxg_combined:.2f}, стабильность={stability_avg:.2f}",
+                threshold_used=config.get("max_dxg_combined", 1.8),
+                reasoning=full_reasoning,
                 trigger_metrics={
                     "dxg_combined": dxg_combined, 
                     "stability_both": stability_avg, 
-                    "shots_per_attack": shots_per_attack
+                    "shots_per_attack": shots_per_attack,
+                    "historical_factor": historical_factor
                 },
                 recommended_odds=self.default_odds["under_2_5_goals"]
             )
