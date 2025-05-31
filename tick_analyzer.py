@@ -205,6 +205,9 @@ class TickAnalyzer:
                 moving_avg.deltas_history = deque(delta_values, maxlen=self.tick_window_size)
                 moving_avg.confidence = min(len(deltas) / self.tick_window_size, 1.0)
                 
+                # Отладочная информация
+                self.logger.debug(f"Обновлены средние для {metric}: дельты={delta_values}, сумма={moving_avg.current_average}")
+                
                 # Определяем тренд на основе последних дельт
                 if len(delta_values) >= 2:
                     if delta_values[-1] > delta_values[-2]:
