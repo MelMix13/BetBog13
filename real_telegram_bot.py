@@ -123,7 +123,8 @@ class RealTelegramBot:
             return
 
         try:
-            async with AsyncSessionLocal() as session:
+            session = AsyncSessionLocal()
+            try:
                 # Получаем статистику сигналов
                 total_signals = await session.scalar(select(func.count(Signal.id)))
                 active_signals = await session.scalar(
@@ -146,7 +147,9 @@ class RealTelegramBot:
                 signals = await session.scalars(stmt)
                 signals_list = list(signals)
 
-            winrate = (won_signals / max(won_signals + lost_signals, 1) * 100) if (won_signals or lost_signals) else 0
+                winrate = (won_signals / max(won_signals + lost_signals, 1) * 100) if (won_signals or lost_signals) else 0
+            finally:
+                await session.close()
 
             signals_text = f"""
 ╭─────────────────────────────────────────╮

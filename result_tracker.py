@@ -8,7 +8,7 @@ import json
 from config import Config
 from models import Signal, Match
 from api_client import APIClient
-from simple_menu_bot import SimpleTelegramMenuBot
+from real_telegram_bot import RealTelegramBot
 from logger import BetBogLogger
 from database import AsyncSessionLocal
 
@@ -21,7 +21,7 @@ class ResultTracker:
         
         # Components (will be injected)
         self.api_client: Optional[APIClient] = None
-        self.telegram_bot: Optional[SimpleTelegramMenuBot] = None
+        self.telegram_bot: Optional[RealTelegramBot] = None
         
         # Result evaluation rules
         self.result_evaluators = {
@@ -36,7 +36,7 @@ class ResultTracker:
             'team_performance': self._evaluate_team_performance
         }
     
-    async def initialize(self, api_client: APIClient, telegram_bot: SimpleTelegramMenuBot):
+    async def initialize(self, api_client: APIClient, telegram_bot: RealTelegramBot):
         """Initialize with required components"""
         self.api_client = api_client
         self.telegram_bot = telegram_bot
