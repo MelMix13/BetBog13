@@ -169,8 +169,11 @@ class BetBogSystem:
         while self.running:
             try:
                 # Get live matches
-                async with self.api_client:
-                    live_matches = await self.api_client.get_live_matches()
+                if self.api_client:
+                    async with self.api_client:
+                        live_matches = await self.api_client.get_live_matches()
+                else:
+                    live_matches = []
                 
                 if not live_matches:
                     self.logger.warning("No live matches found")
@@ -199,8 +202,11 @@ class BetBogSystem:
         """Process a single match for signals"""
         try:
             # Parse match data
-            async with self.api_client:
-                parsed_match = self.api_client.parse_match_data(match_data)
+            if self.api_client:
+                async with self.api_client:
+                    parsed_match = self.api_client.parse_match_data(match_data)
+            else:
+                return
             
             if not parsed_match.get('id'):
                 return
@@ -217,8 +223,11 @@ class BetBogSystem:
                 match_obj = await self.match_monitor.get_or_create_match(session, parsed_match)
                 
                 # Get match statistics
-                async with self.api_client:
-                    stats = await self.api_client.get_match_statistics(match_id)
+                if self.api_client:
+                    async with self.api_client:
+                        stats = await self.api_client.get_match_statistics(match_id)
+                else:
+                    stats = {}
                 
                 if not stats:
                     return

@@ -238,9 +238,12 @@ class MatchMonitor:
                 'gradient_change': 0.2
             }
             
-            changes = self.metrics_calculator.detect_significant_changes(
-                current_metrics, previous_metrics, thresholds
-            )
+            if self.metrics_calculator:
+                changes = self.metrics_calculator.detect_significant_changes(
+                    current_metrics, previous_metrics, thresholds
+                )
+            else:
+                changes = {}
             
             return changes
             
