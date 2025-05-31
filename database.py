@@ -17,6 +17,17 @@ if DATABASE_URL.startswith("postgres://"):
 elif DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+# Remove sslmode parameter for asyncpg compatibility
+if "sslmode=" in DATABASE_URL:
+    import urllib.parse
+    parsed = urllib.parse.urlparse(DATABASE_URL)
+    query_params = urllib.parse.parse_qs(parsed.query)
+    query_params.pop('sslmode', None)
+    new_query = urllib.parse.urlencode(query_params, doseq=True)
+    DATABASE_URL = urllib.parse.urlunparse(
+        (parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment)
+    )
+
 # Create async engine
 engine = create_async_engine(
     DATABASE_URL,

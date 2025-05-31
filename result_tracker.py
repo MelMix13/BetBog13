@@ -8,7 +8,7 @@ import json
 from config import Config
 from models import Signal, Match
 from api_client import APIClient
-from bot import TelegramBot
+from simple_bot import SimpleBettingBot
 from logger import BetBogLogger
 from database import AsyncSessionLocal
 
@@ -21,7 +21,7 @@ class ResultTracker:
         
         # Components (will be injected)
         self.api_client: Optional[APIClient] = None
-        self.telegram_bot: Optional[TelegramBot] = None
+        self.telegram_bot: Optional[SimpleBettingBot] = None
         
         # Result evaluation rules
         self.result_evaluators = {
@@ -36,7 +36,7 @@ class ResultTracker:
             'team_performance': self._evaluate_team_performance
         }
     
-    async def initialize(self, api_client: APIClient, telegram_bot: TelegramBot):
+    async def initialize(self, api_client: APIClient, telegram_bot: SimpleBettingBot):
         """Initialize with required components"""
         self.api_client = api_client
         self.telegram_bot = telegram_bot
