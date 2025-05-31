@@ -425,7 +425,9 @@ class BetBogSystem:
                 'league': match_obj.league
             }
             
-            # await self.telegram_bot.send_signal_notification(signal_data, match_data)  # Отключено
+            # Создаем красивое уведомление о сигнале
+            await self._display_beautiful_signal_notification(signal_data, match_data)
+            
             self.logger.info(f"Signal generated: {signal.strategy_name} for {match_obj.home_team} vs {match_obj.away_team}")
             
             # Update strategy statistics
@@ -595,6 +597,51 @@ class BetBogSystem:
         except Exception as e:
             self.logger.error(f"Error updating strategy stats: {str(e)}")
     
+    async def _display_beautiful_signal_notification(self, signal_data: Dict[str, Any], match_data: Dict[str, Any]):
+        """Отобразить красивое уведомление о сигнале"""
+        try:
+            confidence = signal_data.get('confidence', 0)
+            confidence_emoji = "🔥" if confidence > 0.8 else "⚡" if confidence > 0.6 else "📊"
+            
+            strategy_emojis = {
+                'under_2_5_goals': '🎯',
+                'over_2_5_goals': '⚽',
+                'btts_yes': '🥅',
+                'btts_no': '🛡️',
+                'home_win': '🏠',
+                'away_win': '✈️',
+                'draw': '🤝',
+                'next_goal_home': '🏃‍♂️',
+                'next_goal_away': '🏃‍♀️'
+            }
+            
+            strategy_emoji = strategy_emojis.get(signal_data.get('strategy_name', ''), '🎲')
+            
+            # Красивое форматирование уведомления
+            notification = f"""
+╭─────────────────────────────────────────────────────────────────╮
+│ {confidence_emoji} НОВЫЙ СИГНАЛ ОБНАРУЖЕН! {strategy_emoji}                                │
+├─────────────────────────────────────────────────────────────────┤
+│ 🎯 Стратегия: {signal_data.get('strategy_name', 'N/A')}
+│ 📈 Тип: {signal_data.get('signal_type', 'N/A')}
+│ 🔥 Уверенность: {confidence:.1%}
+│ ⚽ Матч: {match_data.get('home_team', 'N/A')} vs {match_data.get('away_team', 'N/A')}
+│ 🏆 Лига: {match_data.get('league', 'N/A')}
+│ ⏰ Минута: {signal_data.get('trigger_minute', 'N/A')}'
+│ 💡 Прогноз: {signal_data.get('prediction', 'N/A')}
+│ 📊 Коэффициент: {signal_data.get('recommended_odds', 'N/A')}
+├─────────────────────────────────────────────────────────────────┤
+│ 📝 Обоснование:
+│ {signal_data.get('reasoning', 'Данные анализа недоступны')}
+╰─────────────────────────────────────────────────────────────────╯
+"""
+            
+            print(notification)
+            self.logger.success(f"📱 Красивое уведомление о сигнале отправлено: {signal_data.get('strategy_name')}")
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка отображения уведомления: {str(e)}")
+
     async def update_all_strategy_stats(self, session):
         """Update all strategy statistics from signals"""
         try:
