@@ -43,6 +43,9 @@ class BetBogSystem:
         self.monitored_matches: Dict[str, Dict] = {}
         self.active_signals: List[Dict] = []
         
+        # Таймаут между сигналами для одного матча (5 минут)
+        self.match_signal_timeout = {}  # {match_id: last_signal_time}
+        
     async def initialize(self):
         """Initialize all system components"""
         try:
@@ -360,6 +363,21 @@ class BetBogSystem:
                            metrics: MatchMetrics):
         """Process a generated signal"""
         try:
+            # Проверяем таймаут между сигналами для одного матча (5 минут)
+            current_time = datetime.now()
+            match_id = str(match_obj.id)
+            
+            if match_id in self.match_signal_timeout:
+                last_signal_time = self.match_signal_timeout[match_id]
+                time_diff = (current_time - last_signal_time).total_seconds()
+                
+                if time_diff < 300:  # 5 минут = 300 секунд
+                    remaining_time = int(300 - time_diff)
+                    self.logger.debug(f"Таймаут сигнала для матча {match_id}: осталось {remaining_time} сек")
+                    return  # Пропускаем сигнал
+            
+            # Обновляем время последнего сигнала
+            self.match_signal_timeout[match_id] = current_time
             # Use statistical optimizer to enhance confidence
             ml_confidence, ml_explanation = self.ml_optimizer.predict_signal_success(
                 signal.strategy_name,
@@ -658,7 +676,33 @@ class BetBogSystem:
 🎯 <b>Стратегия:</b> {strategy_ru}
 🔥 <b>Уверенность:</b> {confidence:.1%}
 💡 <b>Прогноз:</b> {signal_data.get('prediction', 'N/A')}
-📈 <b>Коэффициент:</b> {signal_data.get('recommended_odds', 'N/A')}
+📈 <b>Коэффициент:</b> {signal_data.get('recommended_odds', 'N/A')}"""
+            
+            # Добавляем статистику истории для стратегий тоталов
+            if strategy_name in ['under_2_5_goals', 'over_2_5_goals']:
+                home_team = match_data.get('home_team', 'N/A')
+                away_team = match_data.get('away_team', 'N/A')
+                
+                # Получаем статистику команд из базы данных
+                team_stats = await self._get_teams_totals_stats(home_team, away_team)
+                
+                if team_stats:
+                    home_stats = team_stats.get('home_team', {})
+                    away_stats = team_stats.get('away_team', {})
+                    
+                    telegram_message += f"""
+
+📈 <b>Статистика команд (последние 10 матчей):</b>
+🏠 <b>{home_team} дома:</b> {home_stats.get('avg_goals_home', 'N/A')} гол/матч | Under 2.5: {home_stats.get('under_25_percent_home', 'N/A')}%
+✈️ <b>{away_team} в гостях:</b> {away_stats.get('avg_goals_away', 'N/A')} гол/матч | Under 2.5: {away_stats.get('under_25_percent_away', 'N/A')}%
+📊 <b>Тренд тоталов:</b> {team_stats.get('combined_trend', 'Анализ недоступен')}"""
+                else:
+                    telegram_message += f"""
+
+📈 <b>Статистика команд:</b>
+📊 <b>Данные истории команд недоступны</b>"""
+            
+            telegram_message += f"""
 
 📝 <b>Обоснование:</b>
 {signal_data.get('reasoning', 'Данные анализа недоступны')}"""
@@ -715,6 +759,89 @@ class BetBogSystem:
                         
         except Exception as e:
             self.logger.error(f"Ошибка Telegram API: {str(e)}")
+
+    async def _get_teams_totals_stats(self, home_team: str, away_team: str) -> Dict[str, Any]:
+        """Получить статистику тоталов для команд из базы данных"""
+        try:
+            async with AsyncSessionLocal() as session:
+                # Получаем последние 10 матчей для каждой команды
+                home_query = select(Match).where(
+                    (Match.home_team == home_team) | (Match.away_team == home_team)
+                ).order_by(Match.match_date.desc()).limit(10)
+                
+                away_query = select(Match).where(
+                    (Match.home_team == away_team) | (Match.away_team == away_team)
+                ).order_by(Match.match_date.desc()).limit(10)
+                
+                home_matches = (await session.execute(home_query)).scalars().all()
+                away_matches = (await session.execute(away_query)).scalars().all()
+                
+                # Анализируем статистику домашней команды
+                home_stats = self._analyze_team_totals(home_matches, home_team, True)
+                
+                # Анализируем статистику гостевой команды  
+                away_stats = self._analyze_team_totals(away_matches, away_team, False)
+                
+                # Комбинированный тренд
+                combined_trend = self._get_combined_trend(home_stats, away_stats)
+                
+                return {
+                    'home_team': home_stats,
+                    'away_team': away_stats,
+                    'combined_trend': combined_trend
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Ошибка получения статистики команд: {str(e)}")
+            return None
+
+    def _analyze_team_totals(self, matches: List, team_name: str, is_home: bool) -> Dict[str, Any]:
+        """Анализ статистики тоталов для команды"""
+        if not matches:
+            return {}
+        
+        total_goals = []
+        under_25_count = 0
+        home_goals = []
+        away_goals = []
+        
+        for match in matches:
+            total = match.home_score + match.away_score
+            total_goals.append(total)
+            
+            if total < 2.5:
+                under_25_count += 1
+                
+            if is_home and match.home_team == team_name:
+                home_goals.append(total)
+            elif not is_home and match.away_team == team_name:
+                away_goals.append(total)
+        
+        relevant_goals = home_goals if is_home else away_goals
+        avg_goals = round(sum(relevant_goals) / len(relevant_goals), 1) if relevant_goals else 0
+        under_25_percent = round((under_25_count / len(matches)) * 100) if matches else 0
+        
+        return {
+            'avg_goals_home' if is_home else 'avg_goals_away': avg_goals,
+            'under_25_percent_home' if is_home else 'under_25_percent_away': under_25_percent,
+            'matches_count': len(matches)
+        }
+
+    def _get_combined_trend(self, home_stats: Dict, away_stats: Dict) -> str:
+        """Определить комбинированный тренд тоталов"""
+        home_under = home_stats.get('under_25_percent_home', 0)
+        away_under = away_stats.get('under_25_percent_away', 0)
+        
+        avg_under = (home_under + away_under) / 2
+        
+        if avg_under >= 70:
+            return "Сильная тенденция к Under 2.5"
+        elif avg_under >= 50:
+            return "Умеренная тенденция к Under 2.5"
+        elif avg_under >= 30:
+            return "Сбалансированные тоталы"
+        else:
+            return "Тенденция к Over 2.5"
 
     async def update_all_strategy_stats(self, session):
         """Update all strategy statistics from signals"""
