@@ -1,0 +1,29 @@
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["glibcLocales", "postgresql"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "BetBog Bot"
+
+[[workflows.workflow]]
+name = "BetBog Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install -r requirements.txt 2>/dev/null || pip install asyncio aiohttp sqlalchemy[asyncio] psycopg2-binary python-telegram-bot scikit-learn pandas numpy colorama && python main.py"
+waitForPort = 5000
+
+[deployment]
+run = ["sh", "-c", "pip install -r requirements.txt 2>/dev/null || pip install asyncio aiohttp sqlalchemy[asyncio] psycopg2-binary python-telegram-bot scikit-learn pandas numpy colorama && python main.py"]
