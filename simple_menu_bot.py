@@ -161,7 +161,8 @@ class SimpleTelegramMenuBot:
     async def show_signals_menu(self):
         """Показать меню сигналов"""
         try:
-            async with get_session() as session:
+            session = get_session()
+            async with session:
                 # Получаем статистику сигналов
                 total_signals = await session.scalar(select(func.count(Signal.id)))
                 active_signals = await session.scalar(
