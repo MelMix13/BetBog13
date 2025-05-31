@@ -303,13 +303,7 @@ class BetBogSystem:
                         if trend_data['current_average'] > 0:
                             self.logger.info(f"Тик анализ {match_id}: {metric_name} = {trend_data['current_average']:.1f}, тренд: {trend_data['trend']}")
                 
-                # Валидация данных перед анализом стратегий
-                if not self._validate_match_data(parsed_match, stats, minute):
-                    self.logger.warning(f"Недостоверные данные для матча {match_id}, пропускаем анализ сигналов")
-                    # Store metrics anyway for monitoring
-                    await self.match_monitor.store_metrics(session, match_obj.id, current_metrics, minute, stats)
-                    await session.commit()
-                    return
+                # Убрана валидация данных - анализируем все живые матчи для поиска дельт и всплесков активности
                 
                 # Store metrics
                 await self.match_monitor.store_metrics(session, match_obj.id, current_metrics, minute, stats)
@@ -994,22 +988,7 @@ class BetBogSystem:
         
         return result
 
-    def _validate_match_data(self, parsed_match: Dict[str, Any], stats: Dict[str, Any], minute: int) -> bool:
-        """Валидация данных матча перед анализом стратегий"""
-        
-        # Проверяем базовые данные матча
-        if not parsed_match.get('home_team') or not parsed_match.get('away_team'):
-            return False
-        
-        # Проверяем, что минута адекватная
-        if minute < 0 or minute > 130:
-            return False
-        
-        # Смягченная валидация - принимаем живые матчи даже с нулевой статистикой
-        # API может не предоставлять детальную статистику в реальном времени
-        self.logger.debug(f"Принят к анализу матч {parsed_match.get('home_team')} vs {parsed_match.get('away_team')} на {minute} минуте")
-        
-        return True
+
 
     def _analyze_team_totals(self, matches: List, team_name: str, is_home: bool) -> Dict[str, Any]:
         """Анализ статистики тоталов для команды"""
