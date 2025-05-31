@@ -1187,6 +1187,22 @@ class TelegramMenuBot:
     async def start(self):
         """Запуск бота"""
         self.running = True
+        # Очищаем старые обновления при запуске
+        try:
+            url = f"https://api.telegram.org/bot{self.bot_token}/getUpdates"
+            params = {"offset": -1}
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data.get("ok") and data.get("result"):
+                            last_update_id = data["result"][-1]["update_id"]
+                            # Пропускаем все старые обновления
+                            async with session.get(url, params={"offset": last_update_id + 1}) as _:
+                                pass
+        except:
+            pass
+        
         print("🚀 BetBog Menu Bot запущен с интерактивными кнопками")
         await self.process_updates()
 
