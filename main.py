@@ -725,10 +725,21 @@ class BetBogSystem:
                     
                     telegram_message += f"""
 
-📈 <b>Статистика команд (последние 10 матчей):</b>
-🏠 <b>{home_team} дома:</b> {home_stats.get('avg_goals_home', 'N/A')} гол/матч | Under 2.5: {home_stats.get('under_25_percent_home', 'N/A')}%
-✈️ <b>{away_team} в гостях:</b> {away_stats.get('avg_goals_away', 'N/A')} гол/матч | Under 2.5: {away_stats.get('under_25_percent_away', 'N/A')}%
-📊 <b>Тренд тоталов:</b> {team_stats.get('combined_trend', 'Анализ недоступен')}"""
+📈 <b>Статистика команд (исторические данные):</b>
+
+🏠 <b>{home_team} дома:</b>
+   • Среднее голов в матчах: {home_stats.get('avg_total_goals', 'N/A')}
+   • Голов команды: {home_stats.get('avg_team_goals', 'N/A')}/матч
+   • Under 2.5: {home_stats.get('under_25_percent_home', 'N/A')}% | Over 2.5: {home_stats.get('over_25_percent_home', 'N/A')}%
+   • Атаки: {home_stats.get('avg_attacks', 'N/A')}/матч | Удары: {home_stats.get('avg_shots', 'N/A')}/матч
+
+✈️ <b>{away_team} в гостях:</b>
+   • Среднее голов в матчах: {away_stats.get('avg_total_goals', 'N/A')}
+   • Голов команды: {away_stats.get('avg_team_goals', 'N/A')}/матч
+   • Under 2.5: {away_stats.get('under_25_percent_away', 'N/A')}% | Over 2.5: {away_stats.get('over_25_percent_away', 'N/A')}%
+   • Атаки: {away_stats.get('avg_attacks', 'N/A')}/матч | Удары: {away_stats.get('avg_shots', 'N/A')}/матч
+
+📊 <b>Прогноз тоталов:</b> {team_stats.get('combined_trend', 'Анализ недоступен')}"""
                 else:
                     telegram_message += f"""
 
@@ -878,8 +889,12 @@ class BetBogSystem:
             return {}
         
         total_goals = []
+        team_goals = []
         under_25_count = 0
+        over_25_count = 0
         relevant_matches = []
+        total_attacks = []
+        total_shots = []
         
         for match in matches:
             # Фильтруем матчи где команда играла дома/в гостях
@@ -904,20 +919,63 @@ class BetBogSystem:
             total = home_score + away_score
             total_goals.append(total)
             
+            # Голы конкретной команды
+            if is_home and match.get('home_team') == team_name:
+                team_goals.append(home_score)
+            elif not is_home and match.get('away_team') == team_name:
+                team_goals.append(away_score)
+            
+            # Счетчики для тоталов
             if total < 2.5:
                 under_25_count += 1
+            else:
+                over_25_count += 1
+            
+            # Атакующие статистики из API если есть
+            stats = match.get('stats', {})
+            if stats:
+                if is_home and match.get('home_team') == team_name:
+                    attacks = stats.get('attacks', {}).get('home', 0)
+                    shots = stats.get('shots_total', {}).get('home', 0)
+                elif not is_home and match.get('away_team') == team_name:
+                    attacks = stats.get('attacks', {}).get('away', 0)
+                    shots = stats.get('shots_total', {}).get('away', 0)
+                else:
+                    attacks = 0
+                    shots = 0
+                
+                if attacks > 0:
+                    total_attacks.append(attacks)
+                if shots > 0:
+                    total_shots.append(shots)
         
         if not total_goals:
             return {}
         
-        avg_goals = round(sum(total_goals) / len(total_goals), 1)
+        # Основные показатели
+        avg_total_goals = round(sum(total_goals) / len(total_goals), 1)
+        avg_team_goals = round(sum(team_goals) / len(team_goals), 1) if team_goals else 0
         under_25_percent = round((under_25_count / len(total_goals)) * 100)
+        over_25_percent = round((over_25_count / len(total_goals)) * 100)
         
-        return {
-            'avg_goals_home' if is_home else 'avg_goals_away': avg_goals,
+        # Атакующие показатели
+        avg_attacks = round(sum(total_attacks) / len(total_attacks), 1) if total_attacks else 0
+        avg_shots = round(sum(total_shots) / len(total_shots), 1) if total_shots else 0
+        
+        result = {
+            'avg_total_goals': avg_total_goals,
+            'avg_team_goals': avg_team_goals,
             'under_25_percent_home' if is_home else 'under_25_percent_away': under_25_percent,
+            'over_25_percent_home' if is_home else 'over_25_percent_away': over_25_percent,
+            'avg_attacks': avg_attacks,
+            'avg_shots': avg_shots,
             'matches_count': len(relevant_matches)
         }
+        
+        # Добавляем legacy поля для совместимости
+        result['avg_goals_home' if is_home else 'avg_goals_away'] = avg_total_goals
+        
+        return result
 
     def _analyze_team_totals(self, matches: List, team_name: str, is_home: bool) -> Dict[str, Any]:
         """Анализ статистики тоталов для команды"""
