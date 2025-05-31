@@ -88,25 +88,31 @@ class TelegramMenuBot:
         }
 
     async def get_live_matches_count(self):
-        """Получение количества live матчей"""
-        conn = await self.get_db_connection()
-        if not conn:
-            return "Н/Д"
-        
+        """Получение количества live матчей через API"""
         try:
-            # Получаем количество активных матчей за последний час
-            query = """
-                SELECT COUNT(*) 
-                FROM matches 
-                WHERE updated_at > NOW() - INTERVAL '1 hour'
-            """
-            count = await conn.fetchval(query)
-            return count or 0
+            api_token = os.getenv("API_TOKEN", "219769-EKswpZvLvKyoxD")
+            url = "https://api.b365api.com/v3/events/inplay"
+            params = {
+                "sport_id": 1,  # Football
+                "token": api_token
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data.get("success") == 1:
+                            matches = data.get("results", [])
+                            return len(matches)
+                        else:
+                            print(f"API ошибка: {data.get('error', 'Неизвестная ошибка')}")
+                            return "API ошибка"
+                    else:
+                        print(f"HTTP ошибка: {response.status}")
+                        return "HTTP ошибка"
         except Exception as e:
-            print(f"Ошибка получения live матчей: {e}")
+            print(f"Ошибка получения live матчей через API: {e}")
             return "Ошибка"
-        finally:
-            await conn.close()
 
     async def get_recent_signals(self, limit: int = 10):
         """Получение последних сигналов"""
