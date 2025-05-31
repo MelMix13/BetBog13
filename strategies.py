@@ -25,13 +25,15 @@ class BettingStrategies:
         self.config = config
         self.logger = BetBogLogger("STRATEGIES")
         self.strategies = {
-            "dxg_spike": self.analyze_dxg_spike,
-            "momentum_shift": self.analyze_momentum_shift,
-            "tiredness_advantage": self.analyze_tiredness_advantage,
-            "shots_efficiency": self.analyze_shots_efficiency,
-            "wave_pattern": self.analyze_wave_pattern,
-            "gradient_breakout": self.analyze_gradient_breakout,
-            "stability_disruption": self.analyze_stability_disruption
+            "over_2_5_goals": self.analyze_over_2_5_goals,
+            "under_2_5_goals": self.analyze_under_2_5_goals,
+            "btts_yes": self.analyze_btts_yes,
+            "btts_no": self.analyze_btts_no,
+            "home_win": self.analyze_home_win,
+            "away_win": self.analyze_away_win,
+            "draw": self.analyze_draw,
+            "next_goal_home": self.analyze_next_goal_home,
+            "next_goal_away": self.analyze_next_goal_away
         }
     
     def analyze_all_strategies(self, 
@@ -52,10 +54,7 @@ class BettingStrategies:
         
         return signals
     
-    def analyze_dxg_spike(self, 
-                         metrics: MatchMetrics, 
-                         match_data: Dict[str, Any], 
-                         minute: int) -> Optional[SignalResult]:
+    def analyze_over_2_5_goals(self, metrics: MatchMetrics, match_data: Dict[str, Any], minute: int) -> Optional[SignalResult]:
         """Analyze sudden spikes in derived xG for over/under signals"""
         
         config = self.config.get("dxg_spike", {})
