@@ -190,13 +190,18 @@ class BetBogSystem:
                         await asyncio.sleep(self.config.MATCH_CHECK_INTERVAL)
                         continue
                 
-                # Process each match
+                # Process each match - убрано ограничение на количество матчей
                 processed_count = 0
-                for match_data in live_matches[:self.config.MAX_CONCURRENT_MATCHES]:
+                for match_data in live_matches:
                     try:
                         # Skip non-dict entries
                         if not isinstance(match_data, dict):
                             continue
+                        
+                        # Фильтр виртуальных матчей
+                        if self._is_virtual_match(match_data):
+                            continue
+                            
                         await self.process_match(match_data)
                         processed_count += 1
                     except Exception as e:
@@ -300,6 +305,43 @@ class BetBogSystem:
                 
         except Exception as e:
             self.logger.error(f"Error processing match {match_data.get('id')}: {str(e)}")
+    
+    def _is_virtual_match(self, match_data: Dict[str, Any]) -> bool:
+        """Проверить является ли матч виртуальным"""
+        # Проверяем различные признаки виртуальных матчей
+        league_name = match_data.get('league', {}).get('name', '').lower()
+        home_team = match_data.get('home', {}).get('name', '').lower()
+        away_team = match_data.get('away', {}).get('name', '').lower()
+        
+        # Ключевые слова для виртуальных матчей
+        virtual_keywords = [
+            'virtual', 'виртуал', 'simulation', 'симуляция', 'esports', 'киберспорт',
+            'cyber', 'digital', 'fifa', 'pes', 'pro evolution soccer', 'counter strike',
+            'dota', 'league of legends', 'valorant', 'rocket league', 'lol'
+        ]
+        
+        # Проверяем название лиги
+        for keyword in virtual_keywords:
+            if keyword in league_name:
+                self.logger.info(f"Фильтрован виртуальный матч: {league_name}")
+                return True
+        
+        # Проверяем названия команд
+        for keyword in virtual_keywords:
+            if keyword in home_team or keyword in away_team:
+                self.logger.info(f"Фильтрован виртуальный матч: {home_team} vs {away_team}")
+                return True
+        
+        # Проверяем ID спорта (если есть информация о том, что это киберспорт)
+        sport_id = match_data.get('sport_id')
+        if sport_id and sport_id != 1:  # 1 - обычно футбол, остальное может быть виртуальное
+            # Дополнительная проверка по названию спорта
+            sport_name = match_data.get('sport', {}).get('name', '').lower()
+            if any(keyword in sport_name for keyword in virtual_keywords):
+                self.logger.info(f"Фильтрован виртуальный спорт: {sport_name}")
+                return True
+        
+        return False
     
     async def process_signal(self, 
                            session, 

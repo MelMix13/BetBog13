@@ -44,7 +44,7 @@ class Config:
     # Monitoring Configuration
     MATCH_CHECK_INTERVAL: int = 60  # seconds
     RESULT_CHECK_INTERVAL: int = 300  # seconds
-    MAX_CONCURRENT_MATCHES: int = 20
+    # MAX_CONCURRENT_MATCHES удалено - теперь обрабатываем все матчи без ограничений
     
     # Logging Configuration
     LOG_LEVEL: str = "INFO"
