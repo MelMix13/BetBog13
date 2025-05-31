@@ -506,7 +506,8 @@ class BetBogSystem:
         
         while self.running:
             try:
-                await self.result_tracker.check_pending_results()
+                # Отключена проверка результатов для предотвращения лишних API запросов
+                # Фокусируемся на генерации новых сигналов
                 await asyncio.sleep(self.config.RESULT_CHECK_INTERVAL)
                 
             except Exception as e:

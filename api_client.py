@@ -156,8 +156,11 @@ class APIClient:
         """Get finished matches with real results from recent days"""
         all_matches = []
         
+        # Ограничиваем поиск максимум 3 днями назад для предотвращения зацикливания
+        max_days = min(days_back, 3)
+        
         # Получаем данные за каждый день отдельно
-        for day_offset in range(days_back):
+        for day_offset in range(max_days):
             target_date = datetime.now() - timedelta(days=day_offset + 1)  # Вчерашние и более ранние матчи
             
             params = {

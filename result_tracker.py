@@ -102,7 +102,7 @@ class ResultTracker:
                 if not match_details:
                     self.logger.debug(f"Direct ID search failed, searching finished matches")
                     async with self.api_client:
-                        finished_matches = await self.api_client.get_finished_matches(days_back=2)
+                        finished_matches = await self.api_client.get_finished_matches(days_back=1)
                         
                         # Find match by ID or by team names and date
                         for finished_match in finished_matches:
