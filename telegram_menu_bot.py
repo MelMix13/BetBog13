@@ -19,6 +19,15 @@ class TelegramMenuBot:
         self.running = False
         self.user_messages = {}  # Хранение message_id для каждого пользователя
         self.animation_frames = self._init_animation_frames()
+        self.authorized_users = [123456789]  # Список авторизованных пользователей
+        self.logger = self._init_logger()
+        
+    def _init_logger(self):
+        """Инициализация логгера"""
+        import logging
+        logger = logging.getLogger("TelegramBot")
+        logger.setLevel(logging.INFO)
+        return logger
         
     def _init_animation_frames(self):
         """Инициализация кадров анимации для переходов"""
@@ -1226,6 +1235,94 @@ class TelegramMenuBot:
         """Остановка бота"""
         self.running = False
         print("🛑 Menu Bot остановлен")
+
+    async def send_signal_notification(self, signal_data: Dict[str, Any], match_data: Dict[str, Any]):
+        """Отправить красивое уведомление о новом сигнале"""
+        try:
+            confidence = signal_data.get('confidence', 0)
+            strategy_name = signal_data.get('strategy_name', 'Unknown')
+            signal_type = signal_data.get('signal_type', 'Unknown')
+            home_team = match_data.get('home_team', 'Команда А')
+            away_team = match_data.get('away_team', 'Команда Б')
+            minute = match_data.get('minute', 0)
+            league = match_data.get('league', 'Неизвестная лига')
+            
+            # Определяем эмодзи для уверенности
+            if confidence >= 1.0:
+                confidence_emoji = "🔥"
+                confidence_text = "ОЧЕНЬ ВЫСОКАЯ"
+            elif confidence >= 0.9:
+                confidence_emoji = "⚡"
+                confidence_text = "ВЫСОКАЯ"
+            elif confidence >= 0.8:
+                confidence_emoji = "📈"
+                confidence_text = "ХОРОШАЯ"
+            else:
+                confidence_emoji = "📊"
+                confidence_text = "СРЕДНЯЯ"
+            
+            # Определяем эмодзи для типа сигнала
+            signal_emoji = {
+                'under_2_5': '⬇️',
+                'over_2_5': '⬆️',
+                'btts_yes': '⚽⚽',
+                'btts_no': '🚫⚽',
+                'home_win': '🏠',
+                'away_win': '✈️',
+                'draw': '🤝',
+                'next_goal_home': '🏠⚽',
+                'next_goal_away': '✈️⚽'
+            }.get(signal_type, '🎯')
+            
+            # Форматируем название стратегии
+            strategy_display = {
+                'under_2_5_goals': 'Тотал меньше 2.5',
+                'over_2_5_goals': 'Тотал больше 2.5',
+                'btts_yes': 'Обе забьют ДА',
+                'btts_no': 'Обе забьют НЕТ',
+                'home_win': 'Победа хозяев',
+                'away_win': 'Победа гостей',
+                'draw': 'Ничья',
+                'next_goal_home': 'Следующий гол - хозяева',
+                'next_goal_away': 'Следующий гол - гости'
+            }.get(strategy_name, strategy_name)
+            
+            # Извлекаем детали из сигнала
+            reasoning = signal_data.get('reasoning', 'Анализ статистики матча')
+            
+            # Красивое уведомление
+            notification_text = f"""🚨 <b>НОВЫЙ СИГНАЛ СТАВКИ</b> 🚨
+
+{signal_emoji} <b>{strategy_display}</b>
+{confidence_emoji} <b>Уверенность: {confidence_text} ({confidence:.0%})</b>
+
+⚽ <b>Матч:</b>
+🏠 {home_team}
+🆚
+✈️ {away_team}
+
+🏆 <b>Лига:</b> {league}
+⏱ <b>Минута:</b> {minute}'
+🕐 <b>Время сигнала:</b> {datetime.now().strftime('%H:%M:%S')}
+
+📋 <b>Анализ:</b>
+{reasoning}
+
+━━━━━━━━━━━━━━━━━━━━━
+💡 <i>Сигнал сгенерирован системой тик-анализа</i>"""
+            
+            # Выводим красивое уведомление в консоль
+            print(f"\n{notification_text}\n")
+            
+            # Логируем краткую информацию
+            if hasattr(self, 'logger'):
+                self.logger.info(f"📱 Сигнал: {strategy_display} | {home_team} vs {away_team} | {confidence:.0%}")
+            
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.error(f"Ошибка создания уведомления: {str(e)}")
+            else:
+                print(f"Ошибка создания уведомления: {str(e)}")
 
 async def main():
     """Главная функция"""

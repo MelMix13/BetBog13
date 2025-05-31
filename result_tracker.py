@@ -88,13 +88,28 @@ class ResultTracker:
                                    match: Match) -> bool:
         """Resolve the result of a single signal"""
         try:
-            # Get updated match data
+            # First try to get updated live match data
             async with self.api_client:
                 match_details = await self.api_client.get_match_details(match.match_id)
             
+            # If not found in live matches, search in finished matches
             if not match_details:
-                self.logger.debug(f"No updated data for match {match.match_id}")
-                return False
+                self.logger.debug(f"Match {match.match_id} not found in live matches, searching finished matches")
+                async with self.api_client:
+                    finished_matches = await self.api_client.get_finished_matches(days_back=2)
+                    
+                    # Find match by ID or by team names and date
+                    for finished_match in finished_matches:
+                        if (finished_match.get('id') == match.match_id or 
+                            (finished_match.get('home_team') == match.home_team and 
+                             finished_match.get('away_team') == match.away_team)):
+                            match_details = finished_match
+                            self.logger.info(f"Found match {match.match_id} in finished matches")
+                            break
+                
+                if not match_details:
+                    self.logger.debug(f"No data found for match {match.match_id} in live or finished matches")
+                    return False
             
             # Parse updated match info
             updated_match = self.api_client.parse_match_data(match_details)
