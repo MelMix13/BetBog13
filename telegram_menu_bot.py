@@ -372,6 +372,7 @@ class TelegramMenuBot:
         await self.answer_callback_query(callback_query_id, "Загружаю конфигурации стратегий...")
         
         strategies = await self.get_strategy_configs()
+        print(f"DEBUG: Loaded {len(strategies)} strategies from database")
         
         if not strategies:
             message = """🎯 <b>Стратегии</b>
@@ -392,6 +393,7 @@ class TelegramMenuBot:
             
             # Создаем словарь для быстрого поиска
             strategies_dict = {s['strategy_name']: s for s in strategies}
+            print(f"DEBUG: Strategy names in dict: {list(strategies_dict.keys())}")
             
             # Отображаем по группам
             message += "🏆 <b>Исходы матча:</b>\n"
@@ -429,6 +431,8 @@ class TelegramMenuBot:
                     win_rate = strategy.get('win_rate', 0)
                     total_signals = strategy.get('total_signals', 0)
                     message += f"🟢 {display_name} | 🎯 {win_rate:.1f}% | 📊 {total_signals}\n"
+            
+            print(f"DEBUG: Final message length: {len(message)}")
 
         # Редактируем существующее сообщение если есть message_id
         if chat_id in self.user_messages:
