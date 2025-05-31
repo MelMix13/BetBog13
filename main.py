@@ -18,6 +18,7 @@ from simple_menu_bot import SimpleTelegramMenuBot
 from match_monitor import MatchMonitor
 from result_tracker import ResultTracker
 from logger import BetBogLogger
+from tick_analyzer import TickAnalyzer
 
 class BetBogSystem:
     """Main BetBog monitoring system"""
@@ -35,6 +36,7 @@ class BetBogSystem:
         self.telegram_bot = SimpleTelegramMenuBot(self.config)
         self.match_monitor = MatchMonitor(self.config)
         self.result_tracker = ResultTracker(self.config)
+        self.tick_analyzer = TickAnalyzer(self.config)
         
         # System state
         self.monitored_matches: Dict[str, Dict] = {}
@@ -250,6 +252,33 @@ class BetBogSystem:
                     stats, historical_stats, minute
                 )
                 
+                # Добавить тик в анализатор для всех live матчей
+                tick_data = {
+                    'minute': minute,
+                    'attacks_home': stats.get('attacks_home', 0),
+                    'attacks_away': stats.get('attacks_away', 0),
+                    'shots_home': stats.get('shots_home', 0),
+                    'shots_away': stats.get('shots_away', 0),
+                    'dangerous_home': stats.get('dangerous_home', 0),
+                    'dangerous_away': stats.get('dangerous_away', 0),
+                    'corners_home': stats.get('corners_home', 0),
+                    'corners_away': stats.get('corners_away', 0),
+                    'goals_home': stats.get('goals_home', 0),
+                    'goals_away': stats.get('goals_away', 0)
+                }
+                
+                # Каждый live матч обязательно проходит через анализатор тиков
+                self.tick_analyzer.add_tick(match_id, tick_data)
+                
+                # Получить derived метрики из анализа тиков
+                tick_trends = self.tick_analyzer.get_trend_analysis(match_id)
+                
+                # Логировать анализ тиков для мониторинга
+                if tick_trends and tick_trends.get('metrics'):
+                    for metric_name, trend_data in tick_trends['metrics'].items():
+                        if trend_data['current_average'] > 0:
+                            self.logger.info(f"Тик анализ {match_id}: {metric_name} = {trend_data['current_average']:.1f}, тренд: {trend_data['trend']}")
+                
                 # Store metrics
                 await self.match_monitor.store_metrics(session, match_obj.id, current_metrics, minute, stats)
                 
@@ -261,6 +290,11 @@ class BetBogSystem:
                 # Process any generated signals
                 for signal in signals:
                     await self.process_signal(session, signal, match_obj, current_metrics)
+                
+                # Очистка данных тиков для завершенных матчей (после 90+ минут)
+                if minute >= 90:
+                    self.tick_analyzer.clear_match_data(match_id)
+                    self.logger.info(f"Очищены данные тиков для завершенного матча {match_id}")
                 
                 await session.commit()
                 

@@ -300,6 +300,25 @@ class TickAnalyzer:
             self.match_deltas.pop(match_id, None)
             self.match_moving_averages.pop(match_id, None)
             self.logger.info(f"Очищены данные для старого матча {match_id}")
+    
+    def clear_match_data(self, match_id: str):
+        """Очистка данных тиков для завершенного матча"""
+        cleared = False
+        
+        if match_id in self.match_ticks:
+            del self.match_ticks[match_id]
+            cleared = True
+        
+        if match_id in self.match_deltas:
+            del self.match_deltas[match_id]
+            cleared = True
+            
+        if match_id in self.match_moving_averages:
+            del self.match_moving_averages[match_id]
+            cleared = True
+        
+        if cleared:
+            self.logger.info(f"Очищены все данные тиков для матча {match_id}")
 
 
 # Функция для тестирования

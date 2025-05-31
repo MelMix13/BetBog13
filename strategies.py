@@ -104,6 +104,51 @@ class BettingStrategies:
                 )
         
         return None
+
+    def analyze_under_2_5_goals(self, 
+                              metrics: MatchMetrics, 
+                              match_data: Dict[str, Any], 
+                              minute: int) -> Optional[SignalResult]:
+        """Analyze under 2.5 goals signal - defensive play"""
+        
+        config = self.config.get("under_2_5_goals", {})
+        threshold = config.get("threshold", 0.6)
+        min_confidence = config.get("min_confidence", 0.65)
+        
+        # Check for defensive indicators
+        total_attacks = metrics.attacks_home + metrics.attacks_away
+        total_shots = metrics.shots_home + metrics.shots_away
+        total_dxg = metrics.dxg_home + metrics.dxg_away
+        
+        # Low attacking activity suggests under 2.5
+        attacking_factor = 1.0 - min(1.0, (total_attacks / 20.0 + total_shots / 15.0) / 2.0)
+        dxg_factor = 1.0 - min(1.0, total_dxg / 2.5)
+        
+        confidence = (attacking_factor * 0.6 + dxg_factor * 0.4)
+        
+        if confidence >= threshold:
+            time_factor = self._get_time_confidence_factor(minute)
+            final_confidence = confidence * time_factor
+            
+            if final_confidence >= min_confidence:
+                return SignalResult(
+                    strategy_name="under_2_5_goals",
+                    signal_type="under_2_5",
+                    confidence=round(final_confidence, 3),
+                    prediction="Under 2.5 Goals",
+                    threshold_used=threshold,
+                    reasoning=f"Low attacking activity: {total_attacks} attacks, {total_shots} shots, {total_dxg:.2f} dxG",
+                    trigger_metrics={
+                        "total_attacks": total_attacks,
+                        "total_shots": total_shots,
+                        "total_dxg": total_dxg,
+                        "minute": minute
+                    },
+                    recommended_odds=self._calculate_recommended_odds("under_2_5", final_confidence),
+                    stake_multiplier=min(1.8, final_confidence + 0.3)
+                )
+        
+        return None
     
     def analyze_momentum_shift(self, 
                              metrics: MatchMetrics, 
