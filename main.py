@@ -14,7 +14,7 @@ from api_client import APIClient
 from metrics_calculator import MetricsCalculator, MatchMetrics
 from strategies import BettingStrategies, SignalResult
 from simple_optimizer import SimpleOptimizer
-from real_telegram_bot import RealTelegramBot
+from simple_menu_bot import SimpleTelegramMenuBot
 from match_monitor import MatchMonitor
 from result_tracker import ResultTracker
 from logger import BetBogLogger
@@ -32,7 +32,7 @@ class BetBogSystem:
         self.metrics_calculator = MetricsCalculator()
         self.strategies = BettingStrategies(self.config.get_default_thresholds())
         self.ml_optimizer = SimpleOptimizer()
-        self.telegram_bot = RealTelegramBot(self.config)
+        self.telegram_bot = SimpleTelegramMenuBot(self.config)
         self.match_monitor = MatchMonitor(self.config)
         self.result_tracker = ResultTracker(self.config)
         

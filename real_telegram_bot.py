@@ -148,6 +148,11 @@ class RealTelegramBot:
                 signals_list = list(signals)
 
                 winrate = (won_signals / max(won_signals + lost_signals, 1) * 100) if (won_signals or lost_signals) else 0
+            except Exception as e:
+                self.logger.error(f"Ошибка получения статистики сигналов: {e}")
+                total_signals = active_signals = won_signals = lost_signals = 0
+                signals_list = []
+                winrate = 0
             finally:
                 await session.close()
 
