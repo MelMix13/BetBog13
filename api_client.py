@@ -13,7 +13,7 @@ class APIClient:
         self.logger = BetBogLogger("API")
         self.session: Optional[aiohttp.ClientSession] = None
         self.last_request_time = 0
-        self.rate_limit_delay = 10.0  # 10 seconds between requests for paid API
+        self.rate_limit_delay = 3.0  # 3 seconds between requests for paid API
         
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(
