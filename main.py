@@ -598,7 +598,7 @@ class BetBogSystem:
             self.logger.error(f"Error updating strategy stats: {str(e)}")
     
     async def _display_beautiful_signal_notification(self, signal_data: Dict[str, Any], match_data: Dict[str, Any]):
-        """Отобразить красивое уведомление о сигнале"""
+        """Отправить красивое уведомление о сигнале в Telegram"""
         try:
             confidence = signal_data.get('confidence', 0)
             confidence_emoji = "🔥" if confidence > 0.8 else "⚡" if confidence > 0.6 else "📊"
@@ -617,8 +617,26 @@ class BetBogSystem:
             
             strategy_emoji = strategy_emojis.get(signal_data.get('strategy_name', ''), '🎲')
             
-            # Красивое форматирование уведомления
-            notification = f"""
+            # Форматирование для Telegram
+            telegram_message = f"""{confidence_emoji} <b>НОВЫЙ СИГНАЛ!</b> {strategy_emoji}
+
+🎯 <b>Стратегия:</b> {signal_data.get('strategy_name', 'N/A')}
+📈 <b>Тип:</b> {signal_data.get('signal_type', 'N/A')}
+🔥 <b>Уверенность:</b> {confidence:.1%}
+⚽ <b>Матч:</b> {match_data.get('home_team', 'N/A')} vs {match_data.get('away_team', 'N/A')}
+🏆 <b>Лига:</b> {match_data.get('league', 'N/A')}
+⏰ <b>Минута:</b> {signal_data.get('trigger_minute', 'N/A')}'
+💡 <b>Прогноз:</b> {signal_data.get('prediction', 'N/A')}
+📊 <b>Коэффициент:</b> {signal_data.get('recommended_odds', 'N/A')}
+
+📝 <b>Обоснование:</b>
+{signal_data.get('reasoning', 'Данные анализа недоступны')}"""
+            
+            # Отправляем в Telegram
+            await self._send_telegram_message(telegram_message)
+            
+            # Дублируем в консоль
+            console_notification = f"""
 ╭─────────────────────────────────────────────────────────────────╮
 │ {confidence_emoji} НОВЫЙ СИГНАЛ ОБНАРУЖЕН! {strategy_emoji}                                │
 ├─────────────────────────────────────────────────────────────────┤
@@ -635,12 +653,37 @@ class BetBogSystem:
 │ {signal_data.get('reasoning', 'Данные анализа недоступны')}
 ╰─────────────────────────────────────────────────────────────────╯
 """
-            
-            print(notification)
-            self.logger.success(f"📱 Красивое уведомление о сигнале отправлено: {signal_data.get('strategy_name')}")
+            print(console_notification)
+            self.logger.success(f"📱 Уведомление отправлено в Telegram: {signal_data.get('strategy_name')}")
             
         except Exception as e:
-            self.logger.error(f"Ошибка отображения уведомления: {str(e)}")
+            self.logger.error(f"Ошибка отправки уведомления: {str(e)}")
+
+    async def _send_telegram_message(self, message: str):
+        """Отправить сообщение в Telegram"""
+        try:
+            import aiohttp
+            
+            bot_token = os.getenv("BOT_TOKEN", "7228733029:AAFVPzKHUSRidigzYSy_IANt8rWzjjPBDPA")
+            chat_id = 5654340844  # Ваш chat_id
+            
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            
+            data = {
+                'chat_id': chat_id,
+                'text': message,
+                'parse_mode': 'HTML'
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, data=data) as response:
+                    if response.status == 200:
+                        self.logger.success("Telegram сообщение отправлено успешно")
+                    else:
+                        self.logger.error(f"Ошибка отправки в Telegram: {response.status}")
+                        
+        except Exception as e:
+            self.logger.error(f"Ошибка Telegram API: {str(e)}")
 
     async def update_all_strategy_stats(self, session):
         """Update all strategy statistics from signals"""
