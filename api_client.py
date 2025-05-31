@@ -61,8 +61,11 @@ class APIClient:
     async def get_live_matches(self, sport_id: int = 1) -> List[Dict[str, Any]]:
         """Get live football matches"""
         params = {"sport_id": sport_id}
+        self.logger.info(f"Requesting live matches with sport_id={sport_id}")
         data = await self._make_request(self.config.LIVE_ENDPOINT, params)
-        return data.get("results", [])
+        results = data.get("results", [])
+        self.logger.info(f"Received {len(results)} live matches")
+        return results
     
     async def get_match_details(self, match_id: str) -> Dict[str, Any]:
         """Get detailed match information"""
