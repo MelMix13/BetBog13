@@ -50,3 +50,8 @@ class Config:
     LOG_LEVEL: str = "INFO"
     LOG_TO_FILE: bool = True
     LOG_FILE: str = "betbog.log"
+    
+    # Настройки анализатора тиков
+    TICK_INTERVAL: int = 60  # интервал между тиками в секундах
+    TICK_WINDOW_SIZE: int = 3  # количество тиков для скользящего среднего
+    MAX_TICKS_HISTORY: int = 50  # максимум тиков в истории матча
