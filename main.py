@@ -336,21 +336,7 @@ class BetBogSystem:
                     # Сначала сохраняем сигнал, затем получаем дополнительную статистику
                     await self.process_signal(session, signal, match_obj, current_metrics)
                     
-                    # Получаем статистику команд для тоталов асинхронно (не блокируя сохранение)
-                    if signal.strategy_name in ['under_2_5_goals', 'over_2_5_goals']:
-                        try:
-                            home_team_id = parsed_match.get('home_team_id')
-                            away_team_id = parsed_match.get('away_team_id')
-                            home_team = parsed_match.get('home_team', '')
-                            away_team = parsed_match.get('away_team', '')
-                            
-                            if home_team_id and away_team_id:
-                                team_stats = await self._get_teams_totals_stats_by_id(home_team_id, away_team_id, home_team, away_team)
-                                signal.team_stats = team_stats
-                                self.logger.info(f"Получена статистика команд для сигнала {signal.strategy_name}")
-                        except Exception as e:
-                            self.logger.warning(f"Не удалось получить статистику команд: {str(e)}")
-                            signal.team_stats = {}
+                    # Исторические данные отключены для экономии API запросов
                 
                 # Очистка данных тиков для завершенных матчей (после 90+ минут)
                 if minute >= 90:

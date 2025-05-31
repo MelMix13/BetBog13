@@ -177,7 +177,6 @@ class APIClient:
                 params["team_id"] = team_id
             
             try:
-                self.logger.info(f"Requesting ended matches for {target_date.strftime('%Y-%m-%d')}")
                 data = await self._make_request(self.config.HISTORY_ENDPOINT, params)
                 matches = data.get("results", [])
                 
@@ -194,11 +193,9 @@ class APIClient:
                         parsed.get('status') == 'finished'):
                         real_matches.append(match)
                 
-                self.logger.info(f"Found {len(real_matches)} finished matches with scores for {target_date.strftime('%Y-%m-%d')}")
                 all_matches.extend(real_matches)
                 
             except Exception as e:
-                self.logger.warning(f"Failed to get matches for {target_date.strftime('%Y-%m-%d')}: {e}")
                 continue
         
         return all_matches
