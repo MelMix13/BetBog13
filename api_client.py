@@ -266,6 +266,29 @@ class APIClient:
         
         return team_matches
     
+    async def get_match_by_id(self, match_id: str) -> Optional[Dict[str, Any]]:
+        """Get specific match by ID from API"""
+        try:
+            params = {
+                "event_id": match_id,
+                "token": self.config.API_TOKEN
+            }
+            
+            self.logger.info(f"Searching for match by ID: {match_id}")
+            data = await self._make_request("/event/view", params)
+            
+            if data and data.get("results"):
+                match_data = data["results"][0] if isinstance(data["results"], list) else data["results"]
+                parsed_match = self.parse_match_data(match_data)
+                self.logger.success(f"Found match {match_id}: {parsed_match.get('home_team')} vs {parsed_match.get('away_team')}")
+                return parsed_match
+            
+            return None
+            
+        except Exception as e:
+            self.logger.debug(f"Match {match_id} not found via direct ID search: {str(e)}")
+            return None
+    
     def parse_match_data(self, match_data: Dict[str, Any]) -> Dict[str, Any]:
         """Parse and normalize match data"""
         try:

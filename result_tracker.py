@@ -92,20 +92,26 @@ class ResultTracker:
             async with self.api_client:
                 match_details = await self.api_client.get_match_details(match.match_id)
             
-            # If not found in live matches, search in finished matches
+            # If not found in live matches, search by direct match ID
             if not match_details:
-                self.logger.debug(f"Match {match.match_id} not found in live matches, searching finished matches")
+                self.logger.debug(f"Match {match.match_id} not found in live matches, searching by ID")
                 async with self.api_client:
-                    finished_matches = await self.api_client.get_finished_matches(days_back=2)
-                    
-                    # Find match by ID or by team names and date
-                    for finished_match in finished_matches:
-                        if (finished_match.get('id') == match.match_id or 
-                            (finished_match.get('home_team') == match.home_team and 
-                             finished_match.get('away_team') == match.away_team)):
-                            match_details = finished_match
-                            self.logger.info(f"Found match {match.match_id} in finished matches")
-                            break
+                    match_details = await self.api_client.get_match_by_id(str(match.match_id))
+                
+                # If direct ID search fails, fallback to finished matches search
+                if not match_details:
+                    self.logger.debug(f"Direct ID search failed, searching finished matches")
+                    async with self.api_client:
+                        finished_matches = await self.api_client.get_finished_matches(days_back=2)
+                        
+                        # Find match by ID or by team names and date
+                        for finished_match in finished_matches:
+                            if (finished_match.get('id') == match.match_id or 
+                                (finished_match.get('home_team') == match.home_team and 
+                                 finished_match.get('away_team') == match.away_team)):
+                                match_details = finished_match
+                                self.logger.info(f"Found match {match.match_id} in finished matches")
+                                break
                 
                 if not match_details:
                     self.logger.debug(f"No data found for match {match.match_id} in live or finished matches")
