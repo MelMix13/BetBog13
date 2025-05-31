@@ -186,6 +186,7 @@ class TickAnalyzer:
             
             # Добавляем в историю дельт
             self.match_deltas[match_id][metric].append(tick_delta)
+            self.logger.debug(f"Дельта {metric}: {delta} для матча {match_id}")
     
     def _update_moving_averages(self, match_id: str):
         """Обновить скользящие средние для всех метрик"""
@@ -193,21 +194,30 @@ class TickAnalyzer:
             deltas = self.match_deltas[match_id][metric]
             moving_avg = self.match_moving_averages[match_id][metric]
             
-            if len(deltas) >= self.tick_window_size:
-                # Берем последние N дельт
+            if len(deltas) >= 1:  # Начинаем анализ с первой дельты
+                # Берем последние N дельт (или все, если их меньше N)
                 recent_deltas = list(deltas)[-self.tick_window_size:]
                 delta_values = [d.delta_value for d in recent_deltas]
                 
-                # Вычисляем скользящее среднее
-                moving_avg.current_average = sum(delta_values) / len(delta_values)
+                # Просто суммируем дельты без деления (как вы просили)
+                moving_avg.current_average = sum(delta_values)
+                # Пересоздаем deque с новыми значениями
                 moving_avg.deltas_history = deque(delta_values, maxlen=self.tick_window_size)
                 moving_avg.confidence = min(len(deltas) / self.tick_window_size, 1.0)
                 
-                # Определяем тренд
+                # Определяем тренд на основе последних дельт
                 if len(delta_values) >= 2:
                     if delta_values[-1] > delta_values[-2]:
                         moving_avg.trend = "rising"
                     elif delta_values[-1] < delta_values[-2]:
+                        moving_avg.trend = "falling"
+                    else:
+                        moving_avg.trend = "stable"
+                elif len(delta_values) == 1:
+                    # Для одной дельты определяем тренд по знаку
+                    if delta_values[0] > 0:
+                        moving_avg.trend = "rising"
+                    elif delta_values[0] < 0:
                         moving_avg.trend = "falling"
                     else:
                         moving_avg.trend = "stable"
