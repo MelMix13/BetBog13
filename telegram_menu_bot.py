@@ -18,7 +18,66 @@ class TelegramMenuBot:
         self.database_url = os.getenv("DATABASE_URL")
         self.running = False
         self.user_messages = {}  # Хранение message_id для каждого пользователя
+        self.animation_frames = self._init_animation_frames()
         
+    def _init_animation_frames(self):
+        """Инициализация кадров анимации для переходов"""
+        return {
+            "loading": [
+                "⏳ Загрузка",
+                "⏳ Загрузка.",
+                "⏳ Загрузка..",
+                "⏳ Загрузка..."
+            ],
+            "processing": [
+                "🔄 Обработка",
+                "🔄 Обработка.",
+                "🔄 Обработка..",
+                "🔄 Обработка..."
+            ],
+            "analyzing": [
+                "📊 Анализ",
+                "📊 Анализ.",
+                "📊 Анализ..",
+                "📊 Анализ..."
+            ],
+            "connecting": [
+                "🔗 Подключение",
+                "🔗 Подключение.",
+                "🔗 Подключение..",
+                "🔗 Подключение..."
+            ]
+        }
+    
+    async def animate_transition(self, chat_id: int, animation_type: str = "loading", duration: float = 1.0):
+        """Показать анимацию перехода"""
+        frames = self.animation_frames.get(animation_type, self.animation_frames["loading"])
+        frame_duration = duration / len(frames)
+        
+        # Получаем message_id для редактирования
+        message_id = self.user_messages.get(chat_id)
+        if not message_id:
+            return
+        
+        for frame in frames:
+            await self.edit_message(chat_id, message_id, frame)
+            await asyncio.sleep(frame_duration)
+    
+    async def smooth_transition_to(self, chat_id: int, callback_query_id: str, 
+                                 target_content: str, target_markup=None, 
+                                 animation_type: str = "loading"):
+        """Плавный переход к новому контенту с анимацией"""
+        # Отвечаем на callback query
+        await self.answer_callback_query(callback_query_id)
+        
+        # Показываем анимацию загрузки
+        await self.animate_transition(chat_id, animation_type, 0.8)
+        
+        # Показываем финальный контент
+        message_id = self.user_messages.get(chat_id)
+        if message_id:
+            await self.edit_message(chat_id, message_id, target_content, target_markup)
+            
     async def get_db_connection(self):
         """Получение подключения к базе данных"""
         try:
@@ -859,23 +918,23 @@ class TelegramMenuBot:
                     self.user_messages[chat_id] = message_id
 
     async def handle_callback(self, chat_id: int, callback_data: str, callback_query_id: str):
-        """Обработка нажатий на кнопки"""
+        """Обработка нажатий на кнопки с плавной анимацией"""
         print(f"🔘 Нажата кнопка: {callback_data}")
         
         if callback_data == "live_matches":
-            await self.handle_live_matches(chat_id, callback_query_id)
+            await self.handle_live_matches_animated(chat_id, callback_query_id)
         elif callback_data == "signals":
-            await self.handle_signals(chat_id, callback_query_id)
+            await self.handle_signals_animated(chat_id, callback_query_id)
         elif callback_data == "strategies":
-            await self.handle_strategies(chat_id, callback_query_id)
+            await self.handle_strategies_animated(chat_id, callback_query_id)
         elif callback_data == "statistics":
-            await self.handle_statistics(chat_id, callback_query_id)
+            await self.handle_statistics_animated(chat_id, callback_query_id)
         elif callback_data == "settings":
-            await self.handle_settings(chat_id, callback_query_id)
+            await self.handle_settings_animated(chat_id, callback_query_id)
         elif callback_data == "help":
-            await self.handle_help(chat_id, callback_query_id)
+            await self.handle_help_animated(chat_id, callback_query_id)
         elif callback_data == "refresh":
-            await self.handle_refresh(chat_id, callback_query_id)
+            await self.handle_refresh_animated(chat_id, callback_query_id)
         elif callback_data == "main_menu":
             await self.handle_main_menu(chat_id, callback_query_id)
         # Обработчики настроек тиков
@@ -900,6 +959,183 @@ class TelegramMenuBot:
             await self.handle_tick_history_change(chat_id, callback_query_id, callback_data)
         else:
             await self.answer_callback_query(callback_query_id, "Неизвестная команда")
+
+    # Анимированные обработчики кнопок
+    async def handle_live_matches_animated(self, chat_id: int, callback_query_id: str):
+        """Анимированный переход к live матчам"""
+        live_count = await self.get_live_matches_count()
+        
+        message = f"""📊 <b>Live матчи</b>
+
+🔴 <b>Активных матчей:</b> {live_count}
+⚡ <b>Мониторинг:</b> {"Включен" if live_count != "Ошибка" else "Ошибка"}
+
+🎯 <b>Анализируемые данные:</b>
+• Атаки и удары по воротам
+• Опасные моменты
+• Угловые удары
+• Голы и счет
+
+🔄 <b>Обновление:</b> каждые 60 секунд"""
+        
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      self.create_main_menu(), "connecting")
+
+    async def handle_signals_animated(self, chat_id: int, callback_query_id: str):
+        """Анимированный переход к сигналам"""
+        signals = await self.get_recent_signals(10)
+        
+        if not signals:
+            message = """⚡ <b>Сигналы</b>
+
+📭 <b>Новых сигналов нет</b>
+
+Система анализирует live матчи и генерирует сигналы на основе:
+• Тиковых метрик
+• Трендов в реальном времени
+• Исторических данных команд
+
+🔄 Обновляйте раздел для проверки новых сигналов"""
+        else:
+            message = "⚡ <b>Последние сигналы</b>\n\n"
+            for i, signal in enumerate(signals[:5], 1):
+                strategy = self.format_strategy_name(signal['strategy_name'])
+                confidence = signal['confidence']
+                signal_type = signal['signal_type']
+                result = signal.get('result', 'pending')
+                
+                result_emoji = "🟡" if result == "pending" else ("🟢" if result == "win" else "🔴")
+                
+                message += f"{i}. {strategy}\n"
+                message += f"   📊 {signal_type} ({confidence:.0f}%) {result_emoji}\n\n"
+            
+            if len(signals) > 5:
+                message += f"... и еще {len(signals) - 5} сигналов"
+        
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      self.create_main_menu(), "analyzing")
+
+    async def handle_strategies_animated(self, chat_id: int, callback_query_id: str):
+        """Анимированный переход к стратегиям"""
+        strategies = await self.get_strategy_configs()
+        
+        if not strategies:
+            message = """🎯 <b>Стратегии</b>
+
+⚙️ <b>Конфигурации стратегий не найдены</b>
+
+Система использует адаптивные алгоритмы для анализа спортивных данных."""
+        else:
+            message = "🎯 <b>Активные стратегии</b>\n\n"
+            
+            for strategy in strategies[:6]:
+                strategy_name = self.format_strategy_name(strategy['strategy_name'])
+                total_signals = strategy.get('total_signals', 0)
+                win_rate = strategy.get('win_rate', 0)
+                
+                message += f"{strategy_name}\n"
+                message += f"📊 Сигналов: {total_signals} | Винрейт: {win_rate:.1f}%\n\n"
+        
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      self.create_main_menu(), "processing")
+
+    async def handle_statistics_animated(self, chat_id: int, callback_query_id: str):
+        """Анимированный переход к статистике"""
+        stats = await self.get_system_statistics()
+        
+        message = f"""📈 <b>Статистика системы</b>
+
+📊 <b>Общие показатели:</b>
+• Всего сигналов: {stats.get('total_signals', 0)}
+• Сегодня сигналов: {stats.get('today_signals', 0)}
+• Активных сигналов: {stats.get('pending_signals', 0)}
+
+🎯 <b>Результативность:</b>
+• Выигрышных сигналов: {stats.get('win_signals', 0)}
+• Общий винрейт: {stats.get('win_rate', 0):.1f}%
+
+🔍 <b>Мониторинг:</b>
+• Отслеживаемых матчей: {stats.get('total_matches', 0)}"""
+
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      self.create_main_menu(), "analyzing")
+
+    async def handle_settings_animated(self, chat_id: int, callback_query_id: str):
+        """Анимированный переход к настройкам"""
+        message = """⚙️ <b>Настройки системы</b>
+
+🔧 <b>Конфигурация анализатора тиков:</b>
+
+Настройте параметры для оптимальной работы системы мониторинга и анализа live матчей.
+
+<b>Доступные настройки:</b>
+• Интервал сбора данных
+• Размер окна анализа  
+• История тиков
+• Отслеживаемые метрики
+• Пороги для трендов
+• Уверенность анализа"""
+
+        settings_menu = {
+            "inline_keyboard": [
+                [
+                    {"text": "⏱️ Интервал тиков", "callback_data": "set_tick_interval"},
+                    {"text": "📊 Размер окна", "callback_data": "set_tick_window"}
+                ],
+                [
+                    {"text": "📚 История тиков", "callback_data": "set_tick_history"},
+                    {"text": "🎯 Метрики", "callback_data": "set_tick_metrics"}
+                ],
+                [
+                    {"text": "🔄 Пороги трендов", "callback_data": "set_tick_thresholds"},
+                    {"text": "📈 Уверенность анализа", "callback_data": "set_tick_confidence"}
+                ],
+                [
+                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
+                ]
+            ]
+        }
+
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      settings_menu, "loading")
+
+    async def handle_help_animated(self, chat_id: int, callback_query_id: str):
+        """Анимированный переход к помощи"""
+        message = """❓ <b>Помощь по BetBog Bot</b>
+
+🤖 <b>Что делает система:</b>
+• Анализирует live футбольные матчи
+• Вычисляет продвинутые метрики
+• Генерирует сигналы для ставок
+• Отслеживает результаты
+
+📊 <b>Кнопки меню:</b>
+• Live матчи - количество активных матчей
+• Сигналы - последние 10 сигналов
+• Стратегии - конфигурации алгоритмов
+• Статистика - общие показатели
+• Настройки - параметры системы
+
+🔄 <b>Обновление данных:</b>
+Нажмите "Обновить" для получения свежих данных
+
+⚡ Система работает 24/7 без нейронных сетей"""
+
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      self.create_main_menu(), "loading")
+
+    async def handle_refresh_animated(self, chat_id: int, callback_query_id: str):
+        """Анимированное обновление главного меню"""
+        message = """🏆 <b>BetBog Monitoring Bot</b>
+
+🤖 Интеллектуальная система мониторинга спортивных ставок
+📊 Анализ live матчей с продвинутыми метриками
+⚡ Автоматическая генерация сигналов
+
+Выберите раздел для получения информации:"""
+        
+        await self.smooth_transition_to(chat_id, callback_query_id, message, 
+                                      self.create_main_menu(), "processing")
 
     async def handle_update(self, update: Dict[str, Any]):
         """Обработка обновления от Telegram"""
