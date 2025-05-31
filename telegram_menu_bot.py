@@ -232,12 +232,20 @@ class TelegramMenuBot:
         
         try:
             query = """
-                SELECT strategy_name, total_signals, win_rate
+                SELECT strategy_name, total_signals, win_rate, winning_signals, enabled
                 FROM strategy_configs 
+                WHERE enabled = true
                 ORDER BY strategy_name
             """
             rows = await conn.fetch(query)
-            return [dict(row) for row in rows]
+            strategies = []
+            for row in rows:
+                strategy = dict(row)
+                # Вычисляем win_rate если не задан
+                if strategy['total_signals'] > 0 and strategy['win_rate'] == 0:
+                    strategy['win_rate'] = (strategy['winning_signals'] / strategy['total_signals']) * 100
+                strategies.append(strategy)
+            return strategies
         except Exception as e:
             print(f"Ошибка получения стратегий: {e}")
             return []
