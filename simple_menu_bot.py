@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional
 
 from config import Config
 from logger import BetBogLogger
-from database import get_session
+from database import get_session, AsyncSessionLocal
 from models import Signal, Match, StrategyConfig
 from sqlalchemy import select, desc, func
 
@@ -49,10 +49,11 @@ class SimpleTelegramMenuBot:
             self.logger.success("🚀 Telegram бот запущен в режиме мониторинга")
             self.logger.info("📱 Бот готов принимать команды и отправлять уведомления")
             
-            # Симуляция работы бота - в реальной версии здесь был бы polling
-            while self.running:
-                await asyncio.sleep(30)  # Проверяем каждые 30 секунд
-                await self._check_system_status()
+            # Запускаем обработку команд и мониторинг параллельно
+            await asyncio.gather(
+                self._process_updates(),
+                self._monitoring_loop()
+            )
                 
         except Exception as e:
             self.logger.error(f"Ошибка работы бота: {str(e)}")
@@ -92,6 +93,189 @@ class SimpleTelegramMenuBot:
         finally:
             if session:
                 await session.close()
+
+    async def _monitoring_loop(self):
+        """Цикл мониторинга системы"""
+        while self.running:
+            await asyncio.sleep(30)  # Проверяем каждые 30 секунд
+            await self._check_system_status()
+
+    async def _process_updates(self):
+        """Обработка входящих сообщений от Telegram"""
+        import aiohttp
+        last_update_id = 0
+        
+        while self.running:
+            try:
+                # Получаем обновления от Telegram API
+                url = f"https://api.telegram.org/bot{self.config.BOT_TOKEN}/getUpdates"
+                params = {"offset": last_update_id + 1, "timeout": 10}
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, params=params) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            if data.get("ok"):
+                                for update in data.get("result", []):
+                                    await self._handle_update(update)
+                                    last_update_id = max(last_update_id, update["update_id"])
+                        
+            except Exception as e:
+                self.logger.error(f"Ошибка получения обновлений: {str(e)}")
+                await asyncio.sleep(5)
+
+    async def _handle_update(self, update: Dict[str, Any]):
+        """Обработка одного обновления"""
+        try:
+            if "message" in update:
+                message = update["message"]
+                chat_id = message["chat"]["id"]
+                text = message.get("text", "")
+                
+                if text.startswith("/start"):
+                    await self._send_start_message(chat_id)
+                elif text.startswith("/status"):
+                    await self._send_status_message(chat_id)
+                elif text.startswith("/signals"):
+                    await self._send_signals_message(chat_id)
+                elif text.startswith("/matches"):
+                    await self._send_matches_message(chat_id)
+                elif text.startswith("/help"):
+                    await self._send_help_message(chat_id)
+                    
+        except Exception as e:
+            self.logger.error(f"Ошибка обработки сообщения: {str(e)}")
+
+    async def _send_message(self, chat_id: int, text: str):
+        """Отправка сообщения пользователю"""
+        import aiohttp
+        try:
+            url = f"https://api.telegram.org/bot{self.config.BOT_TOKEN}/sendMessage"
+            data = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=data) as response:
+                    if response.status == 200:
+                        self.logger.info(f"✅ Сообщение отправлено пользователю {chat_id}")
+                    else:
+                        self.logger.error(f"❌ Ошибка отправки сообщения: {response.status}")
+                        
+        except Exception as e:
+            self.logger.error(f"Ошибка отправки сообщения: {str(e)}")
+
+    async def _send_start_message(self, chat_id: int):
+        """Отправка приветственного сообщения"""
+        message = """🏆 <b>Добро пожаловать в BetBog Monitoring Bot!</b>
+
+🤖 Интеллектуальная система мониторинга спортивных ставок
+📊 Анализ live матчей с продвинутыми метриками
+⚡ Автоматическая генерация сигналов
+
+<b>Доступные команды:</b>
+/status - Статус системы
+/signals - Активные сигналы
+/matches - Live матчи
+/help - Помощь
+
+🔥 Система активно мониторит live футбольные матчи и генерирует умные сигналы для ставок!"""
+        
+        await self._send_message(chat_id, message)
+
+    async def _send_status_message(self, chat_id: int):
+        """Отправка статуса системы"""
+        session = None
+        try:
+            session = AsyncSessionLocal()
+            
+            # Получаем статистику
+            total_signals = await session.scalar(select(func.count(Signal.id)))
+            pending_signals = await session.scalar(
+                select(func.count(Signal.id)).where(Signal.result == "pending")
+            )
+            total_matches = await session.scalar(select(func.count(Match.id)))
+            
+            message = f"""📊 <b>Статус системы BetBog</b>
+
+🟢 <b>Система активна</b>
+📈 Всего сигналов: {total_signals or 0}
+⏳ Ожидающие результата: {pending_signals or 0}
+⚽ Обработано матчей: {total_matches or 0}
+
+🔄 Система активно мониторит live матчи и анализирует данные для генерации сигналов."""
+            
+            await self._send_message(chat_id, message)
+            
+        except Exception as e:
+            error_message = f"❌ Ошибка получения статуса: {str(e)}"
+            await self._send_message(chat_id, error_message)
+        finally:
+            if session:
+                await session.close()
+
+    async def _send_signals_message(self, chat_id: int):
+        """Отправка активных сигналов"""
+        session = None
+        try:
+            session = AsyncSessionLocal()
+            
+            # Получаем последние сигналы
+            signals = await session.execute(
+                select(Signal).where(Signal.result == "pending")
+                .order_by(desc(Signal.created_at)).limit(5)
+            )
+            signals_list = signals.scalars().all()
+            
+            if signals_list:
+                message = "🎯 <b>Активные сигналы:</b>\n\n"
+                for signal in signals_list:
+                    message += f"⚡ {signal.strategy_name}\n"
+                    message += f"📊 Уверенность: {signal.confidence:.1%}\n"
+                    message += f"🎰 Ставка: {signal.bet_type}\n\n"
+            else:
+                message = "📭 Нет активных сигналов в данный момент"
+                
+            await self._send_message(chat_id, message)
+            
+        except Exception as e:
+            error_message = f"❌ Ошибка получения сигналов: {str(e)}"
+            await self._send_message(chat_id, error_message)
+        finally:
+            if session:
+                await session.close()
+
+    async def _send_matches_message(self, chat_id: int):
+        """Отправка live матчей"""
+        message = """⚽ <b>Live мониторинг матчей</b>
+
+🔄 Система активно обрабатывает live футбольные матчи
+📊 Анализируются продвинутые метрики:
+• dxG (производные ожидаемые голы)
+• Gradient (тренды производительности)
+• Wave amplitude (амплитуда интенсивности)
+• Momentum (импульс команд)
+• Tiredness factor (фактор усталости)
+
+⚡ При обнаружении выгодных возможностей система автоматически генерирует сигналы."""
+        
+        await self._send_message(chat_id, message)
+
+    async def _send_help_message(self, chat_id: int):
+        """Отправка справки"""
+        message = """❓ <b>Помощь по BetBog Bot</b>
+
+<b>Команды:</b>
+/start - Запуск бота
+/status - Текущий статус системы
+/signals - Список активных сигналов
+/matches - Информация о live матчах
+/help - Эта справка
+
+<b>О системе:</b>
+BetBog - интеллектуальная система для мониторинга спортивных ставок, которая анализирует live футбольные матчи и генерирует сигналы на основе продвинутых метрик и алгоритмов машинного обучения.
+
+🔔 Уведомления о новых сигналах приходят автоматически."""
+        
+        await self._send_message(chat_id, message)
 
     async def send_signal_notification(self, signal_data: Dict[str, Any], match_data: Dict[str, Any]):
         """Отправить уведомление о новом сигнале"""
