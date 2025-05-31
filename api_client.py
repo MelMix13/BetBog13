@@ -84,16 +84,44 @@ class APIClient:
                                  days_back: int = 1, 
                                  sport_id: int = 1) -> List[Dict[str, Any]]:
         """Get finished matches from recent days"""
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days_back)
+        all_matches = []
         
-        params = {
-            "sport_id": sport_id,
-            "day": start_date.strftime("%Y%m%d")
-        }
+        # Получаем данные за каждый день отдельно
+        for day_offset in range(days_back):
+            target_date = datetime.now() - timedelta(days=day_offset)
+            
+            params = {
+                "sport_id": sport_id,
+                "day": target_date.strftime("%Y%m%d"),
+                "token": self.config.API_TOKEN
+            }
+            
+            try:
+                self.logger.info(f"Requesting historical matches for {target_date.strftime('%Y-%m-%d')}")
+                data = await self._make_request(self.config.HISTORY_ENDPOINT, params)
+                matches = data.get("results", [])
+                self.logger.info(f"Received {len(matches)} matches for {target_date.strftime('%Y-%m-%d')}")
+                all_matches.extend(matches)
+            except Exception as e:
+                self.logger.warning(f"Failed to get matches for {target_date.strftime('%Y-%m-%d')}: {e}")
+                continue
         
-        data = await self._make_request(self.config.HISTORY_ENDPOINT, params)
-        return data.get("results", [])
+        return all_matches
+    
+    async def get_team_matches(self, team_name: str, days_back: int = 30) -> List[Dict[str, Any]]:
+        """Get specific team's matches from recent period"""
+        all_matches = await self.get_finished_matches(days_back)
+        team_matches = []
+        
+        for match in all_matches:
+            home_team = match.get("home", {}).get("name", "").lower()
+            away_team = match.get("away", {}).get("name", "").lower()
+            search_team = team_name.lower()
+            
+            if search_team in home_team or search_team in away_team:
+                team_matches.append(self.parse_match_data(match))
+        
+        return team_matches
     
     def parse_match_data(self, match_data: Dict[str, Any]) -> Dict[str, Any]:
         """Parse and normalize match data"""
