@@ -267,6 +267,34 @@ class TelegramMenuBot:
         }
         return strategy_names.get(strategy_name, f"📋 {strategy_name}")
 
+    async def get_current_settings(self):
+        """Получение текущих настроек системы"""
+        try:
+            # Базовые настройки из config.py
+            settings = {
+                'tick_interval': 60,  # TICK_INTERVAL из config
+                'tick_window_size': 3,  # TICK_WINDOW_SIZE из config
+                'max_ticks_history': 50,  # MAX_TICKS_HISTORY из config
+                'min_confidence': 55,  # Минимальная уверенность для сигналов
+                'match_check_interval': 60,  # MATCH_CHECK_INTERVAL
+                'result_check_interval': 300,  # RESULT_CHECK_INTERVAL
+                'ml_update_interval': 24  # ML_UPDATE_INTERVAL в часах
+            }
+            
+            # Применяем временные изменения, если они есть
+            temp_settings = getattr(self, '_temp_settings', {})
+            settings.update(temp_settings)
+            
+            return settings
+        except Exception as e:
+            print(f"Ошибка получения настроек: {e}")
+            return {
+                'tick_interval': 60,
+                'tick_window_size': 3,
+                'max_ticks_history': 50,
+                'min_confidence': 55
+            }
+
     async def get_system_statistics(self):
         """Получение статистики системы"""
         conn = await self.get_db_connection()
@@ -774,25 +802,12 @@ class TelegramMenuBot:
         # Извлекаем значение из callback_data
         interval = int(callback_data.split("_")[-1])
         
-        # Здесь можно сохранить настройки в базу данных или конфиг
-        # Пока просто показываем подтверждение
+        # Сохраняем новое значение в глобальную конфигурацию (имитация)
+        self._temp_settings = getattr(self, '_temp_settings', {})
+        self._temp_settings['tick_interval'] = interval
         
-        message = f"""✅ <b>Интервал тиков обновлен</b>
-
-<b>Новый интервал:</b> {interval} секунд
-
-Изменения вступят в силу при следующем перезапуске системы анализа."""
-
-        back_menu = {
-            "inline_keyboard": [
-                [
-                    {"text": "⚙️ Настройки", "callback_data": "settings"},
-                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
-                ]
-            ]
-        }
-
-        await self.send_message(chat_id, message, back_menu)
+        # Возвращаемся к настройкам с обновленными значениями
+        await self.handle_settings_animated(chat_id, callback_query_id)
 
     async def handle_tick_window_change(self, chat_id: int, callback_query_id: str, callback_data: str):
         """Изменение размера окна тиков"""
@@ -800,22 +815,12 @@ class TelegramMenuBot:
         
         window_size = int(callback_data.split("_")[-1])
         
-        message = f"""✅ <b>Размер окна обновлен</b>
-
-<b>Новый размер:</b> {window_size} тиков
-
-Теперь скользящее среднее будет рассчитываться по последним {window_size} дельтам."""
-
-        back_menu = {
-            "inline_keyboard": [
-                [
-                    {"text": "⚙️ Настройки", "callback_data": "settings"},
-                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
-                ]
-            ]
-        }
-
-        await self.send_message(chat_id, message, back_menu)
+        # Сохраняем новое значение
+        self._temp_settings = getattr(self, '_temp_settings', {})
+        self._temp_settings['tick_window_size'] = window_size
+        
+        # Возвращаемся к настройкам с обновленными значениями
+        await self.handle_settings_animated(chat_id, callback_query_id)
 
     async def handle_tick_history_change(self, chat_id: int, callback_query_id: str, callback_data: str):
         """Изменение истории тиков"""
@@ -823,22 +828,12 @@ class TelegramMenuBot:
         
         history_size = int(callback_data.split("_")[-1])
         
-        message = f"""✅ <b>История тиков обновлена</b>
-
-<b>Новый размер истории:</b> {history_size} тиков
-
-Система будет хранить до {history_size} тиков для каждого матча."""
-
-        back_menu = {
-            "inline_keyboard": [
-                [
-                    {"text": "⚙️ Настройки", "callback_data": "settings"},
-                    {"text": "🏠 Главное меню", "callback_data": "main_menu"}
-                ]
-            ]
-        }
-
-        await self.send_message(chat_id, message, back_menu)
+        # Сохраняем новое значение
+        self._temp_settings = getattr(self, '_temp_settings', {})
+        self._temp_settings['max_ticks_history'] = history_size
+        
+        # Возвращаемся к настройкам с обновленными значениями
+        await self.handle_settings_animated(chat_id, callback_query_id)
 
     async def handle_help(self, chat_id: int, callback_query_id: str):
         """Обработка кнопки Помощь"""
@@ -1074,19 +1069,21 @@ class TelegramMenuBot:
 
     async def handle_settings_animated(self, chat_id: int, callback_query_id: str):
         """Анимированный переход к настройкам"""
-        message = """⚙️ <b>Настройки системы</b>
+        # Получаем текущие настройки из конфигурации
+        current_settings = await self.get_current_settings()
+        
+        message = f"""⚙️ <b>Настройки системы</b>
 
-🔧 <b>Конфигурация анализатора тиков:</b>
+🔧 <b>Текущие настройки анализатора тиков:</b>
 
-Настройте параметры для оптимальной работы системы мониторинга и анализа live матчей.
+⏱️ <b>Интервал сбора данных:</b> {current_settings.get('tick_interval', 60)} сек
+📊 <b>Размер окна анализа:</b> {current_settings.get('tick_window_size', 3)} тиков
+📚 <b>Максимум истории:</b> {current_settings.get('max_ticks_history', 50)} тиков
+🎯 <b>Активные метрики:</b> DXG, Momentum, Tiredness, Wave
+🔄 <b>Пороги трендов:</b> Адаптивные (ML)
+📈 <b>Уверенность анализа:</b> {current_settings.get('min_confidence', 55)}%
 
-<b>Доступные настройки:</b>
-• Интервал сбора данных
-• Размер окна анализа  
-• История тиков
-• Отслеживаемые метрики
-• Пороги для трендов
-• Уверенность анализа"""
+<b>Нажмите для изменения параметров:</b>"""
 
         settings_menu = {
             "inline_keyboard": [
