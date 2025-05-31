@@ -32,7 +32,7 @@ class BetBogSystem:
         self.metrics_calculator = MetricsCalculator()
         self.strategies = BettingStrategies(self.config.get_default_thresholds())
         self.ml_optimizer = SimpleOptimizer()
-        self.telegram_bot = SimpleBettingBot(self.config)
+        self.telegram_bot = BetBogTelegramBot(self.config)
         self.match_monitor = MatchMonitor(self.config)
         self.result_tracker = ResultTracker(self.config)
         
@@ -143,7 +143,7 @@ class BetBogSystem:
             asyncio.create_task(self.match_monitoring_loop()),
             asyncio.create_task(self.result_tracking_loop()),
             asyncio.create_task(self.ml_optimization_loop()),
-            asyncio.create_task(self.telegram_bot.start_bot()),
+            asyncio.create_task(self.telegram_bot.start_polling()),
             asyncio.create_task(self.system_maintenance_loop())
         ]
         
@@ -557,7 +557,7 @@ class BetBogSystem:
         
         try:
             # Stop Telegram bot
-            await self.telegram_bot.stop_bot()
+            await self.telegram_bot.stop_polling()
             self.logger.success("Telegram bot stopped")
             
             # Close database connections

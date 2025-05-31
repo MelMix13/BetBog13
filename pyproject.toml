@@ -9,6 +9,6 @@ dependencies = [
     "colorama>=0.4.6",
     "numpy>=2.2.6",
     "psycopg2-binary>=2.9.10",
-    "python-telegram-bot>=22.1",
+    "python-telegram-bot[all]>=22.1",
     "sqlalchemy>=2.0.41",
 ]
