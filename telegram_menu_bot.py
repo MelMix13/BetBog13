@@ -893,8 +893,17 @@ class TelegramMenuBot:
         print(f"📨 Команда от {user_name}: {text}")
         
         if text.startswith("/start") or text.startswith("/menu"):
-            # Используем анимированный переход для команды /start
-            await self.handle_refresh_animated(chat_id, "")
+            message = """🏆 <b>BetBog Monitoring Bot</b>
+
+🤖 Интеллектуальная система мониторинга спортивных ставок
+📊 Анализ live матчей с продвинутыми метриками
+⚡ Автоматическая генерация сигналов
+
+Выберите раздел для получения информации:"""
+            
+            message_id = await self.send_message(chat_id, message, self.create_main_menu())
+            if message_id:
+                self.user_messages[chat_id] = message_id
             
         else:
             message = f"""Команда: <code>{text}</code>
