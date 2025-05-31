@@ -13,7 +13,7 @@ class APIClient:
         self.logger = BetBogLogger("API")
         self.session: Optional[aiohttp.ClientSession] = None
         self.last_request_time = 0
-        self.rate_limit_delay = 3.0  # 3 seconds between requests to avoid 429 errors
+        self.rate_limit_delay = 5.0  # 5 seconds between requests to avoid 429 errors
         
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(
@@ -40,6 +40,14 @@ class APIClient:
             await self._reconnect()
         
         try:
+            # Rate limiting to avoid 429 errors
+            current_time = time.time()
+            time_since_last = current_time - self.last_request_time
+            if time_since_last < self.rate_limit_delay:
+                sleep_time = self.rate_limit_delay - time_since_last
+                await asyncio.sleep(sleep_time)
+            
+            self.last_request_time = time.time()
             self.logger.info(f"API Request: {endpoint}")
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:

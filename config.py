@@ -42,7 +42,7 @@ class Config:
     FEATURE_IMPORTANCE_THRESHOLD: float = 0.1
     
     # Monitoring Configuration
-    MATCH_CHECK_INTERVAL: int = 60  # seconds
+    MATCH_CHECK_INTERVAL: int = 30  # seconds - 1 тик каждые 30 секунд
     RESULT_CHECK_INTERVAL: int = 300  # seconds
     # MAX_CONCURRENT_MATCHES удалено - теперь обрабатываем все матчи без ограничений
     
@@ -52,6 +52,6 @@ class Config:
     LOG_FILE: str = "betbog.log"
     
     # Настройки анализатора тиков
-    TICK_INTERVAL: int = 60  # интервал между тиками в секундах
+    TICK_INTERVAL: int = 30  # интервал между тиками в секундах = 1 тик каждые 30 сек
     TICK_WINDOW_SIZE: int = 3  # количество тиков для скользящего среднего
     MAX_TICKS_HISTORY: int = 50  # максимум тиков в истории матча
