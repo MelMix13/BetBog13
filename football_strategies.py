@@ -80,9 +80,13 @@ class FootballStrategies:
         return signals
 
     async def analyze_over_2_5_goals(self, metrics: MatchMetrics, match_data: Dict[str, Any], minute: int) -> Optional[SignalResult]:
-        """Тотал больше 2.5 голов - анализ с историей команд"""
+        """Тотал больше 2.5 голов - анализ с историей команд (до 20 минуты)"""
         config = self.config.get("over_2_5_goals", {})
         
+        # Временное ограничение: прогнозируем только до 20 минуты
+        if minute > 20:
+            return None
+            
         # Получаем названия команд
         home_team = match_data.get('home_team', '')
         away_team = match_data.get('away_team', '')
@@ -94,7 +98,7 @@ class FootballStrategies:
             self.logger.warning(f"Ошибка исторического анализа: {e}")
             historical_prediction = {"status": "error"}
         
-        # Текущие метрики матча
+        # Текущие метрики матча (пониженный вес для ранней стадии)
         dxg_combined = metrics.dxg_home + metrics.dxg_away
         attacks_total = match_data.get('attacks_home', 0) + match_data.get('attacks_away', 0)
         shots_total = match_data.get('shots_home', 0) + match_data.get('shots_away', 0)

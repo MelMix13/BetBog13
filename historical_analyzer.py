@@ -50,17 +50,17 @@ class HistoricalAnalyzer:
             if not matches:
                 return {"status": "no_data", "team": team_name}
             
-            # Анализируем тоталы
-            total_analysis = self._analyze_totals_pattern(matches, team_name)
-            form_analysis = self._analyze_recent_form(matches, team_name)
+            # Анализируем тоталы с детальной разбивкой дома/в гостях
+            totals_stats = self._analyze_totals_pattern(matches, team_name)
+            recent_form = self._analyze_recent_form(matches, team_name)
             home_away_analysis = self._analyze_home_away_pattern(matches, team_name)
             
             return {
                 "status": "success",
                 "team": team_name,
                 "matches_analyzed": len(matches),
-                "total_analysis": total_analysis,
-                "form_analysis": form_analysis,
+                "totals_stats": totals_stats,
+                "recent_form": recent_form,
                 "home_away_analysis": home_away_analysis,
                 "last_updated": datetime.now()
             }

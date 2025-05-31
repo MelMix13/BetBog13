@@ -58,12 +58,32 @@ class APIClient:
             self.logger.error(f"API Exception: {str(e)}")
             return {"success": 0, "results": [], "error": str(e)}
     
-    async def get_live_matches(self, sport_id: int = 1) -> List[Dict[str, Any]]:
+    async def get_live_matches(self, sport_id: int = 1, skip_esports: bool = True) -> List[Dict[str, Any]]:
         """Get live football matches"""
         params = {"sport_id": sport_id}
         self.logger.info(f"Requesting live matches with sport_id={sport_id}")
         data = await self._make_request(self.config.LIVE_ENDPOINT, params)
         results = data.get("results", [])
+        
+        # Фильтруем виртуальные/киберспортивные матчи если нужно
+        if skip_esports:
+            real_matches = []
+            for match in results:
+                league = match.get("league", {}).get("name", "").lower()
+                home_team = match.get("home", {}).get("name", "").lower() 
+                away_team = match.get("away", {}).get("name", "").lower()
+                
+                # Исключаем виртуальные матчи по ключевым словам
+                virtual_keywords = ["virtual", "esports", "fifa", "pes", "cyber", "sim", "simulation", "esoccer", "gt leagues"]
+                is_virtual = any(keyword in league or keyword in home_team or keyword in away_team 
+                               for keyword in virtual_keywords)
+                
+                if not is_virtual:
+                    real_matches.append(match)
+            
+            self.logger.info(f"Filtered {len(results)} -> {len(real_matches)} real matches")
+            return real_matches
+        
         self.logger.info(f"Received {len(results)} live matches")
         return results
     
@@ -128,6 +148,56 @@ class APIClient:
                 
             except Exception as e:
                 self.logger.warning(f"Failed to get matches for {target_date.strftime('%Y-%m-%d')}: {e}")
+                continue
+        
+        return all_matches
+    
+    async def get_upcoming_matches(self, 
+                                 days_ahead: int = 1, 
+                                 sport_id: int = 1,
+                                 skip_esports: bool = True) -> List[Dict[str, Any]]:
+        """Get upcoming matches for pre-match analysis"""
+        all_matches = []
+        
+        # Получаем данные на ближайшие дни
+        for day_offset in range(days_ahead):
+            target_date = datetime.now() + timedelta(days=day_offset)
+            
+            params = {
+                "sport_id": sport_id,
+                "day": target_date.strftime("%Y%m%d"),
+                "token": self.config.API_TOKEN,
+                "page": 1
+            }
+            
+            try:
+                self.logger.info(f"Requesting upcoming matches for {target_date.strftime('%Y-%m-%d')}")
+                data = await self._make_request("/events/upcoming", params)
+                matches = data.get("results", [])
+                
+                # Фильтруем виртуальные матчи если нужно
+                if skip_esports:
+                    real_matches = []
+                    for match in matches:
+                        league = match.get("league", {}).get("name", "").lower()
+                        home_team = match.get("home", {}).get("name", "").lower() 
+                        away_team = match.get("away", {}).get("name", "").lower()
+                        
+                        # Исключаем виртуальные матчи
+                        virtual_keywords = ["virtual", "esports", "fifa", "pes", "cyber", "sim", "simulation"]
+                        is_virtual = any(keyword in league or keyword in home_team or keyword in away_team 
+                                       for keyword in virtual_keywords)
+                        
+                        if not is_virtual:
+                            real_matches.append(match)
+                    
+                    matches = real_matches
+                
+                self.logger.info(f"Found {len(matches)} upcoming matches for {target_date.strftime('%Y-%m-%d')}")
+                all_matches.extend(matches)
+                
+            except Exception as e:
+                self.logger.warning(f"Failed to get upcoming matches for {target_date.strftime('%Y-%m-%d')}: {e}")
                 continue
         
         return all_matches
