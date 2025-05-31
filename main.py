@@ -2,6 +2,7 @@ import asyncio
 import os
 import signal
 import sys
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import json
@@ -176,9 +177,20 @@ class BetBogSystem:
                     live_matches = []
                 
                 if not live_matches:
-                    self.logger.warning("No live matches found")
-                    await asyncio.sleep(self.config.MATCH_CHECK_INTERVAL)
-                    continue
+                    self.logger.info("No live matches found, checking recent finished matches for analysis")
+                    # Get recent finished matches for demonstration and analysis
+                    if self.api_client:
+                        async with self.api_client:
+                            finished_matches = await self.api_client.get_finished_matches(days_back=1)
+                            if finished_matches:
+                                # Take first 3 finished matches and analyze them
+                                live_matches = finished_matches[:3]
+                                self.logger.success(f"Found {len(live_matches)} recent matches for analysis")
+                    
+                    if not live_matches:
+                        self.logger.info("No matches available for processing")
+                        await asyncio.sleep(self.config.MATCH_CHECK_INTERVAL)
+                        continue
                 
                 # Process each match
                 processed_count = 0
