@@ -11,7 +11,8 @@ from typing import Dict, Any, List, Optional
 
 from config import Config
 from logger import BetBogLogger
-from database import get_session, AsyncSessionLocal
+from database import get_session
+from database import AsyncSessionLocal
 from models import Signal, Match, StrategyConfig
 from sqlalchemy import select, desc, func
 
