@@ -938,7 +938,7 @@ class TelegramMenuBot:
         elif callback_data == "signals":
             await self.handle_signals_animated(chat_id, callback_query_id)
         elif callback_data == "strategies":
-            await self.handle_strategies_animated(chat_id, callback_query_id)
+            await self.handle_strategies(chat_id, callback_query_id)
         elif callback_data == "statistics":
             await self.handle_statistics_animated(chat_id, callback_query_id)
         elif callback_data == "settings":
